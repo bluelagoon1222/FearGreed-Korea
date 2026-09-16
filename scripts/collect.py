@@ -212,33 +212,39 @@ def is_common_stock(code: str, name: str) -> bool:
     return True
 
 
+STOCK_LINK = re.compile(r"code=(\d{6})")
+
+
 def naver_market_sum(sosok: int) -> list[dict]:
-    """sosok 0 = KOSPI, 1 = KOSDAQ. Returns every row on Naver's market-cap list."""
+    """sosok 0 = KOSPI, 1 = KOSDAQ. Parses Naver's market-cap list (HTML)."""
     url = "https://finance.naver.com/sise/sise_market_sum.naver"
     out: list[dict] = []
     seen: set[str] = set()
     for page in range(1, 120):
         html = fetch_text(url, {"sosok": sosok, "page": page}, encoding="euc-kr")
         soup = BeautifulSoup(html, "lxml")
-        table = soup.select_one("table.type_2")
-        if table is None:
+        tables = soup.find_all("table")
+        table = max(tables, key=lambda t: len(t.find_all("a", href=STOCK_LINK)), default=None)
+        if table is None or not table.find_all("a", href=STOCK_LINK):
+            if page == 1:
+                log(f"market_sum sosok={sosok}: no stock table (tables={len(tables)}, html={len(html)}b, "
+                    f"title={soup.title.get_text(strip=True)[:60] if soup.title else '-'})")
             break
         headers = [th.get_text(strip=True) for th in table.find_all("th")]
         idx = {h: i for i, h in enumerate(headers)}
-        i_name = idx.get("종목명", 1)
         i_price = idx.get("현재가", 2)
         i_pct = idx.get("등락률", 4)
         i_mcap = idx.get("시가총액", 6)
         i_vol = idx.get("거래량", 9)
         new = 0
         for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 6:
-                continue
-            a = tr.find("a", href=re.compile(r"code=\d{6}"))
+            a = tr.find("a", href=STOCK_LINK)
             if a is None:
                 continue
-            code = re.search(r"code=(\d{6})", a["href"]).group(1)
+            tds = tr.find_all("td")
+            if len(tds) < 5:
+                continue
+            code = STOCK_LINK.search(a["href"]).group(1)
             if code in seen:
                 continue
             seen.add(code)
@@ -249,7 +255,7 @@ def naver_market_sum(sosok: int) -> list[dict]:
 
             out.append({
                 "code": code,
-                "name": a.get_text(strip=True) or cell(i_name),
+                "name": a.get_text(strip=True),
                 "price": to_num(cell(i_price)),
                 "chg_pct": to_num(cell(i_pct)),
                 "mktcap": to_num(cell(i_mcap)),     # 억원
@@ -257,6 +263,52 @@ def naver_market_sum(sosok: int) -> list[dict]:
                 "market": "KOSPI" if sosok == 0 else "KOSDAQ",
             })
         if new == 0:
+            break
+    return out
+
+
+def naver_market_sum_api(market: str) -> list[dict]:
+    """Fallback: Naver mobile JSON list by market value. market = KOSPI | KOSDAQ."""
+    url = f"https://m.stock.naver.com/api/stocks/marketValue/{market}"
+    out: list[dict] = []
+    seen: set[str] = set()
+    for page in range(1, 80):
+        r = SESSION.get(url, params={"page": page, "pageSize": 100}, timeout=CFG["timeout"])
+        if r.status_code != 200:
+            log(f"market api {market} page {page}: HTTP {r.status_code}")
+            break
+        js = r.json()
+        stocks = js.get("stocks") if isinstance(js, dict) else (js if isinstance(js, list) else [])
+        if not stocks:
+            break
+        added = 0
+        for it in stocks:
+            if not isinstance(it, dict):
+                continue
+            code = str(it.get("itemCode") or it.get("code") or "")
+            if not re.fullmatch(r"\d{6}", code) or code in seen:
+                continue
+            seen.add(code)
+            added += 1
+            pct = to_num(it.get("fluctuationsRatio"))
+            cmp_code = str((it.get("compareToPreviousPrice") or {}).get("code", ""))
+            if pct is not None:
+                if cmp_code in ("4", "5"):
+                    pct = -abs(pct)
+                elif cmp_code == "3":
+                    pct = 0.0
+            out.append({
+                "code": code,
+                "name": it.get("stockName") or it.get("name") or "",
+                "price": to_num(it.get("closePrice")),
+                "chg_pct": pct,
+                "mktcap": to_num(it.get("marketValue")),
+                "volume": to_num(it.get("accumulatedTradingVolume")),
+                "market": market,
+            })
+        total = js.get("totalCount") if isinstance(js, dict) else None
+        time.sleep(CFG["sleep"])
+        if added == 0 or (total and len(out) >= int(total)):
             break
     return out
 
@@ -647,8 +699,22 @@ def main() -> None:
                                    "volume": 1e5, "market": m})
         status["market_sum"] = "demo"
     else:
-        all_stocks = naver_market_sum(0) + naver_market_sum(1)
-        status["market_sum"] = "ok" if len(all_stocks) > 1500 else f"short:{len(all_stocks)}"
+        try:
+            all_stocks = naver_market_sum(0) + naver_market_sum(1)
+        except Exception as e:  # noqa: BLE001
+            log(f"market_sum html failed: {e}")
+            all_stocks = []
+        status["market_sum"] = f"html {len(all_stocks)}"
+        if len(all_stocks) < 500:
+            log("market list from HTML too short, trying Naver mobile API")
+            try:
+                api_rows = naver_market_sum_api("KOSPI") + naver_market_sum_api("KOSDAQ")
+            except Exception as e:  # noqa: BLE001
+                log(f"market api failed: {e}")
+                api_rows = []
+            if len(api_rows) > len(all_stocks):
+                all_stocks = api_rows
+            status["market_sum"] += f" / mobile api {len(api_rows)}"
     log(f"listed rows: {len(all_stocks)}")
 
     def ad_counts(market: str) -> dict:
@@ -680,7 +746,9 @@ def main() -> None:
             log(f"kospi200 list failed: {e}")
     if len(k200_exact) >= 150:
         by_code = {s["code"]: s for s in all_stocks}
-        universe += [dict(by_code[c], group="KOSPI") for c in k200_exact if c in by_code]
+        universe += [dict(by_code.get(c, {"code": c, "name": c, "price": None, "chg_pct": None,
+                                          "mktcap": None, "volume": None, "market": "KOSPI"}), group="KOSPI")
+                     for c in k200_exact]
         status["universe_kospi"] = f"kospi200 exact ({len(k200_exact)})"
     else:
         universe += [dict(s, group="KOSPI") for s in kospi_common[:CFG["universe_kospi"]]]
@@ -1006,6 +1074,8 @@ def main() -> None:
         }
 
     latest = {
+        "status": status,
+        "log_tail": LOG_LINES[-12:],
         "asof": asof,
         "asof_fmt": f"{asof[:4]}.{asof[4:6]}.{asof[6:]}",
         "generated_at": NOW.strftime("%Y-%m-%d %H:%M KST"),
@@ -1034,8 +1104,6 @@ def main() -> None:
             "vkospi": cut(vk_al, 2),
             "composite_days": sum(1 for x in composite if x is not None),
         },
-        "status": status,
-        "log_tail": LOG_LINES[-12:],
     }
 
     # ---------------- 8. history.json (persistent daily log) ----------------
@@ -1057,8 +1125,15 @@ def main() -> None:
     hist_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     latest["history_days"] = len(history)
 
+    latest["log_tail"] = LOG_LINES[-15:]
     (DATA_DIR / "latest.json").write_text(json.dumps(latest, ensure_ascii=False, separators=(",", ":")),
                                           encoding="utf-8")
+    (DATA_DIR / "status.json").write_text(json.dumps({
+        "asof": asof, "generated_at": latest["generated_at"], "composite": latest["composite"],
+        "components": {c["key"]: c["score"] for c in comp_out}, "breadth_all": breadth_all,
+        "universe": {k: v for k, v in latest["universe"].items() if k in ("size", "kospi_basis", "kosdaq_basis")},
+        "universe_all": latest["universe"]["ALL"], "status": status, "log": LOG_LINES[-40:],
+    }, ensure_ascii=False, indent=1), encoding="utf-8")
     log(f"done: composite {latest['composite']['score']} ({latest['composite']['label']}), "
         f"{latest['composite']['n_components']} components, {time.time() - START_TS:.0f}s")
 
