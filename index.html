@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>공포·탐욕 CHECK — 한국 주식시장 심리·시장 폭</title>
-<meta name="description" content="KOSPI·KOSDAQ 시장 심리(공포·탐욕) 종합지수와 시장 폭(breadth) 지표를 매일 자동 갱신하는 대시보드">
+<title>공포·탐욕 CHECK — 종목 단위로 읽는 한국 시장 심리와 시장 폭</title>
+<meta name="description" content="KOSPI·KOSDAQ 공포·탐욕 종합지수와 종목 단위 시장 폭(breadth) 지표를 5년 히스토리로 보여주는 대시보드. 매 거래일 자동 갱신.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -38,31 +38,51 @@ a{color:var(--blue)}
 .section{padding:44px 0 8px}
 .rule{height:1px;background:var(--orange);margin-bottom:16px}
 .section h2{margin:0 0 6px;font-size:22px;font-weight:700;color:var(--ink);line-height:1.3}
-.section .lead{margin:0 0 20px;font-size:16px;color:var(--muted);max-width:760px}
+.section .lead{margin:0 0 20px;font-size:16px;color:var(--muted);max-width:780px}
+.section h3{font-size:18px;margin:0 0 8px;color:var(--ink);font-weight:600}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
 /* hero */
-.hero{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:40px;align-items:center;padding:34px 0 10px}
-.gauge{width:100%;max-width:420px;margin:0 auto}
+.hero{display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:40px;align-items:center;padding:30px 0 6px}
+.gauge{width:100%;max-width:400px;margin:0 auto}
 .gauge svg{width:100%;height:auto;display:block}
 .gauge .score{font-family:var(--f-num);font-weight:700;font-size:56px;fill:var(--ink);letter-spacing:-1px}
 .gauge .lbl{font-family:var(--f-kr);font-weight:700;font-size:20px}
 .gauge .tick{font-family:var(--f-num);font-size:12px;fill:var(--muted)}
-.legend{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin-top:10px;font-size:13px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin-top:6px;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:12px;height:12px;vertical-align:-2px;margin-right:6px}
 
 .compare{width:100%;border-collapse:collapse;font-size:16px}
-.compare th{background:var(--orange-soft);text-align:left;font-weight:700;padding:10px 12px;color:var(--ink);border:1px solid var(--hair)}
+.compare th{background:var(--orange-soft);text-align:left;font-weight:700;padding:9px 12px;color:var(--ink);border:1px solid var(--hair)}
 .compare th:last-child,.compare td:last-child{text-align:right}
-.compare td{padding:10px 12px;border:1px solid var(--hair-soft);color:var(--body)}
+.compare td{padding:8px 12px;border:1px solid var(--hair-soft);color:var(--body)}
 .compare td.v{text-align:right;font-weight:600;color:var(--ink)}
 .compare tr.now td{background:var(--subtle)}
-.pill{display:inline-block;min-width:82px;text-align:center;padding:2px 8px;border-radius:2px;color:#fff;font-size:14px;font-weight:500;line-height:1.5}
-.idx{display:flex;gap:28px;margin-top:18px;font-size:15px;color:var(--muted)}
+.pill{display:inline-block;min-width:82px;text-align:center;padding:1px 8px;border-radius:2px;color:#fff;font-size:14px;font-weight:500;line-height:1.5}
+.idx{display:flex;gap:28px;margin-top:14px;font-size:15px;color:var(--muted)}
 .idx b{display:block;font-size:20px;color:var(--ink);font-weight:600}
 .idx .up{color:#C62828}.idx .dn{color:var(--blue)}
 
+/* breadth tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:26px 0 8px}
+.tile{border:1px solid var(--hair);border-top:3px solid var(--orange);padding:14px 16px 12px;background:#fff}
+.tile .k{font-size:14px;color:var(--muted);line-height:1.4}
+.tile .v{font-family:var(--f-num);font-size:30px;font-weight:700;color:var(--ink);line-height:1.15;margin:6px 0 2px;letter-spacing:-.5px}
+.tile .v small{font-size:15px;font-weight:500;color:var(--muted);margin-left:4px;letter-spacing:0}
+.tile .s{font-size:14px;color:var(--muted)}
+.tile .s b{font-weight:600;color:var(--ink)}
+.tile .s .up{color:#C62828}.tile .s .dn{color:var(--blue)}
+
+/* period selector */
+.periods{display:inline-flex;border:1px solid var(--hair);border-radius:2px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px}
+.periods button{font-family:var(--f-num);font-size:14px;font-weight:500;letter-spacing:.5px;padding:8px 15px;border:0;border-right:1px solid var(--hair);background:#fff;color:var(--muted);cursor:pointer}
+.periods button:last-child{border-right:0}
+.periods button:hover{background:var(--subtle);color:var(--ink)}
+.periods button.on{background:var(--orange);color:#fff}
+.periods button:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}
+
 /* charts */
-.chart{position:relative;height:340px;border:1px solid var(--hair);padding:14px 10px 8px;background:#fff}
+.chart{position:relative;height:360px;border:1px solid var(--hair);padding:14px 10px 8px;background:#fff}
 .chart.short{height:280px}
 .chart-note{margin:8px 0 0;font-size:14px;color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
@@ -98,7 +118,7 @@ a{color:var(--blue)}
 .bt td.hi{background:#D7D7D7}
 
 /* method */
-details{border:1px solid var(--hair);padding:0 18px;background:var(--subtle)}
+details{border:1px solid var(--hair);padding:0 18px;background:var(--subtle);margin-bottom:8px}
 details summary{cursor:pointer;padding:14px 0;font-weight:600;color:var(--ink);font-size:17px}
 details ol,details ul{padding-left:20px;margin:6px 0 16px}
 details li{margin:6px 0;font-size:16px}
@@ -113,13 +133,16 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
   .top .wrap{flex-direction:column;align-items:flex-start;gap:8px}
   .stamp{text-align:left;white-space:normal}
   .brand h1{font-size:22px}
-  .hero{grid-template-columns:1fr;gap:22px;padding-top:20px}
+  .hero{grid-template-columns:1fr;gap:20px;padding-top:18px}
+  .tiles{grid-template-columns:1fr 1fr;gap:10px}
+  .tile{padding:10px 12px 8px}
+  .tile .v{font-size:24px}
   .grid2{grid-template-columns:1fr}
-  .chart{height:280px;padding:10px 4px 4px}
+  .chart{height:300px;padding:10px 4px 4px}
   .chart.short{height:240px}
-  .gauge .score{font-size:56px}
   .section{padding-top:36px}
   .section h2{font-size:20px}
+  .periods button{padding:8px 11px;font-size:13px}
   .comps thead{display:none}
   .comps,.comps tbody,.comps tr,.comps td{display:block;width:100%}
   .comps tr{border:1px solid var(--hair);margin-bottom:12px;padding:10px 12px}
@@ -144,7 +167,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
   <div class="wrap">
     <div class="brand">
       <h1>공포·탐욕 <span>CHECK</span></h1>
-      <p>한국 주식시장 심리 종합지수와 시장 폭(breadth) 지표 — 매 거래일 자동 갱신</p>
+      <p>지수가 아니라 종목 단위로 읽는 시장 심리 — 공포·탐욕 종합지수와 시장 폭(breadth), 5년 히스토리, 매 거래일 자동 갱신</p>
     </div>
     <div class="stamp" id="stamp">데이터를 불러오는 중…</div>
   </div>
@@ -169,27 +192,25 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     </div>
   </section>
 
-  <section class="section">
-    <div class="rule"></div>
-    <h2>종합지수 추이</h2>
-    <p class="lead">최근 1년 종합지수(오렌지, 0~100)와 KOSPI(파랑). 배경 띠는 공포·중립·탐욕 구간입니다.</p>
-    <div class="chart"><canvas id="c-composite"></canvas></div>
-  </section>
+  <div class="tiles" id="tiles"></div>
 
   <section class="section">
     <div class="rule"></div>
-    <h2>구성 지표</h2>
-    <p class="lead">각 지표는 최근 250거래일 안에서 오늘 값이 몇 번째 백분위인지로 0~100점을 매기고, 종합지수는 이들의 단순 평균입니다. 변동성처럼 높을수록 공포인 지표는 방향을 뒤집어 점수화합니다.</p>
-    <table class="comps" aria-label="구성 지표 점수">
-      <thead><tr><th>지표</th><th style="text-align:right">현재값</th><th>점수 (0 공포 — 100 탐욕)</th><th>전일 / 1주 전 / 1개월 전</th><th>점수 추이 1년</th></tr></thead>
-      <tbody id="comps"></tbody>
-    </table>
+    <div class="sec-head">
+      <div>
+        <h2>종합지수 히스토리</h2>
+        <p class="lead">종합지수(오렌지, 0~100)와 KOSPI(파랑, 오른쪽 축). 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다. 배경 띠는 공포·중립·탐욕 구간입니다.</p>
+      </div>
+      <div class="periods" id="periods" role="group" aria-label="차트 기간"></div>
+    </div>
+    <div class="chart"><canvas id="c-composite"></canvas></div>
+    <p class="chart-note" id="composite-note"></p>
   </section>
 
   <section class="section">
     <div class="rule"></div>
     <h2>시장 폭</h2>
-    <p class="lead">지수가 오르더라도 소수 대형주에 기댄 상승인지, 시장 전반이 함께 움직이는지를 확인합니다. 전종목 상승·하락은 네이버 시가총액 목록 기준이고, 이동평균·52주 지표는 KOSPI200·KOSDAQ150 대용 유니버스 기준입니다.</p>
+    <p class="lead">삼성전자·SK하이닉스 두 종목이 지수의 절반을 움직이는 시장에서는 지수 등락률만으로 심리를 읽기 어렵습니다. 여기서는 시장의 몇 %가 실제로 오르고, 장기 추세 위에 있고, 신고가를 내는지를 종목 단위로 집계합니다. 전종목 상승·하락은 네이버 시가총액 목록 기준, 이동평균·52주 지표는 KOSPI200·KOSDAQ150 대용 유니버스 350종목 기준입니다.</p>
     <div class="grid2">
       <div>
         <div class="adbar" id="ad-kospi"></div>
@@ -207,22 +228,32 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
 
     <div class="grid2" style="margin-top:24px">
       <div>
-        <h3 style="font-size:18px;margin:0 0 8px;color:var(--ink)">이동평균 상회 종목 비율</h3>
+        <h3>이동평균 상회 종목 비율</h3>
         <div class="chart short"><canvas id="c-ma"></canvas></div>
         <p class="chart-note">유니버스 350종목 중 20일(연한 오렌지)·50일(파랑)·200일(오렌지) 이동평균 위에 있는 종목 비율. 200일선 위 비율이 20% 아래면 역사적 바닥권, 80% 위면 과열권으로 봅니다.</p>
       </div>
       <div>
-        <h3 style="font-size:18px;margin:0 0 8px;color:var(--ink)">누적 상승·하락선(ADL)과 KOSPI</h3>
+        <h3>누적 상승·하락선(ADL)과 KOSPI</h3>
         <div class="chart short"><canvas id="c-adl"></canvas></div>
         <p class="chart-note">매일 (상승 종목수 − 하락 종목수)를 누적한 선(오렌지)과 KOSPI(파랑). 지수는 오르는데 ADL이 꺾이면 상승 폭이 좁아지는 신호입니다.</p>
       </div>
     </div>
 
     <div style="margin-top:24px">
-      <h3 style="font-size:18px;margin:0 0 8px;color:var(--ink)">52주 신고가 · 신저가 종목수</h3>
+      <h3>52주 신고가 · 신저가 종목수</h3>
       <div class="chart short"><canvas id="c-hl"></canvas></div>
       <p class="chart-note">유니버스 내 52주 신고가 종목수(오렌지, 위)와 신저가 종목수(파랑, 아래).</p>
     </div>
+  </section>
+
+  <section class="section">
+    <div class="rule"></div>
+    <h2>구성 지표</h2>
+    <p class="lead">각 지표는 최근 250거래일 안에서 오늘 값이 몇 번째 백분위인지로 0~100점을 매기고, 종합지수는 이들의 단순 평균입니다. 변동성처럼 높을수록 공포인 지표는 방향을 뒤집어 점수화합니다.</p>
+    <table class="comps" aria-label="구성 지표 점수">
+      <thead><tr><th>지표</th><th style="text-align:right">현재값</th><th>점수 (0 공포 — 100 탐욕)</th><th>전일 / 1주 전 / 1개월 전</th><th>점수 추이 1년</th></tr></thead>
+      <tbody id="comps"></tbody>
+    </table>
   </section>
 
   <section class="section">
@@ -234,7 +265,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
         <li>구성 지표별로 원자료 시계열을 만든 뒤, 각 날짜 값이 직전 250거래일(약 1년) 분포에서 차지하는 경험적 백분위(0~100)를 점수로 씁니다.</li>
         <li>변동성처럼 값이 높을수록 공포인 지표는 100에서 백분위를 빼서 방향을 맞춥니다.</li>
         <li>종합지수는 그날 계산된 지표 점수의 단순 평균입니다(3개 이상일 때만 산출). 구간은 0~25 극단적 공포, 25~45 공포, 45~55 중립, 55~75 탐욕, 75~100 극단적 탐욕입니다.</li>
-        <li>유니버스는 KOSPI200 구성종목(수집 실패 시 KOSPI 시가총액 상위 200)과 KOSDAQ 시가총액 상위 150(우선주·ETF·ETN·스팩·리츠 제외)입니다. 오늘의 종목 구성으로 과거를 되짚어 계산하므로 생존편향이 있습니다.</li>
+        <li>유니버스는 KOSPI200 구성종목(수집 실패 시 KOSPI 시가총액 상위 200)과 KOSDAQ 시가총액 상위 150(우선주·ETF·ETN·스팩·리츠 제외)입니다. 오늘의 종목 구성으로 최대 7년 전까지 되짚어 계산하므로 과거로 갈수록 생존편향이 커지고, 상장 5년 미만 종목은 그 이전 구간의 집계에서 빠집니다.</li>
       </ol>
     </details>
     <details>
@@ -244,7 +275,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     <details>
       <summary>유의사항</summary>
       <ul>
-        <li>VKOSPI(코스피200 변동성지수)는 무료 공개 경로가 없어 KOSPI 20일 실현변동성으로 대체했습니다. KRX Open API 승인 후 교체할 예정입니다.</li>
+        <li>변동성 지표는 VKOSPI(코스피200 변동성지수) 일별 자료가 200일 이상 확보되면 VKOSPI를, 그렇지 않으면 KOSPI 20일 실현변동성을 씁니다. 어느 쪽이 쓰였는지는 구성 지표 이름과 아래 실행 상태에 표시됩니다.</li>
         <li>장 마감 후 갱신 시 당일 종가를, 아침 갱신 시 전일 종가를 기준일로 삼습니다. 장중에 수동 실행하면 당일 값은 장중가입니다.</li>
         <li>심리지표는 과열·침체의 정도를 보여주는 참고 자료이며, 매매 시점을 보장하지 않습니다. 극단 구간은 추세가 이어지는 동안 오래 머물 수 있습니다.</li>
       </ul>
@@ -258,7 +289,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
 
 <footer>
   <div class="wrap">
-    데이터: 네이버 금융(지수·종목·ETF 일별 시세, 시가총액 목록, 투자자별 매매동향), 금융투자협회 종합통계(신용융자, 가용 시). 지수 산출은 CNN Fear &amp; Greed Index의 구성 방식을 한국 시장 데이터로 재구성한 것입니다.<br>
+    데이터: 네이버 금융(지수·종목·ETF 일별 시세, 시가총액 목록, 투자자별 매매동향, VKOSPI), 금융투자협회 종합통계(신용융자, 가용 시). 지수 산출은 CNN Fear &amp; Greed Index의 구성 방식을 한국 시장 데이터로 재구성하고 종목 단위 시장 폭 지표를 더한 것입니다.<br>
     본 자료는 시장 심리 파악을 위한 참고 자료이며 특정 종목·상품의 매매를 권유하지 않습니다. 투자 판단과 책임은 투자자 본인에게 있습니다.
   </div>
 </footer>
@@ -273,10 +304,15 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     {max:100, name:'극단적 탐욕', color:'#F58220'}
   ];
   const ORANGE='#F58220', BLUE='#043B72', SOFT='#FAB072', GRAY='#84888B';
+  const PERIODS = [['3M',63],['6M',126],['1Y',250],['3Y',750],['5Y',1250]];
+  let period = '1Y';
   const band = s => (s==null) ? {name:'-',color:GRAY} : BANDS.find(b => s < b.max || b.max===100);
+  const bandText = b => b.color === '#84888B' ? '#3D3D3D' : b.color;
   const fmt = (v, d=1) => (v==null || isNaN(v)) ? '-' : Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d, maximumFractionDigits:d});
   const fmtDate = s => s ? `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}` : '-';
   const el = (id) => document.getElementById(id);
+  const tail = (arr, n) => arr.slice(Math.max(0, arr.length - n));
+  const sign = (v, d=1, suf='') => v==null ? '-' : `<span class="${v>=0?'up':'dn'}">${v>=0?'▲':'▼'} ${fmt(Math.abs(v),d)}${suf}</span>`;
 
   Chart.defaults.font.family = "'Inter','Noto Sans KR',sans-serif";
   Chart.defaults.font.size = 12;
@@ -303,6 +339,9 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
   };
   Chart.register(bandPlugin);
 
+  function xTick(v){ const d = this.getLabelForValue(v); return d ? d.slice(2,4)+'.'+d.slice(4,6) : ''; }
+  function xTickLong(v){ const d = this.getLabelForValue(v); return d ? d.slice(0,4)+'.'+d.slice(4,6) : ''; }
+
   function gaugeSVG(score){
     const cx=160, cy=150, r=116, w=24;
     const ang = s => Math.PI*(1 - s/100);
@@ -319,36 +358,54 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     if(score!=null){
       const a = ang(score), [nx,ny]=pt(a, r-w/2-6);
       const b = band(score);
-      const col = b.color === '#84888B' ? '#3D3D3D' : b.color;
       s += `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#1A1A1A" stroke-width="3" stroke-linecap="round"/>`;
       s += `<circle cx="${cx}" cy="${cy}" r="7" fill="#1A1A1A"/>`;
       s += `<text class="score" x="${cx}" y="${cy+58}" text-anchor="middle">${fmt(score,0)}</text>`;
-      s += `<text class="lbl" x="${cx}" y="${cy+84}" text-anchor="middle" fill="${col}">${b.name}</text>`;
+      s += `<text class="lbl" x="${cx}" y="${cy+84}" text-anchor="middle" fill="${bandText(b)}">${b.name}</text>`;
     }
     s += '</svg>';
     return s;
   }
 
-  function lineChart(ctx, labels, datasets, opts){
-    return new Chart(ctx, {
+  // ---- time-series charts sharing one period selector ----
+  const REG = [];   // {chart, dates, full:[arrays]}
+  function register(chart, dates, full){ REG.push({chart, dates, full}); }
+  function applyPeriod(p){
+    period = p;
+    const n = PERIODS.find(x=>x[0]===p)[1];
+    const long = n > 300;
+    REG.forEach(r => {
+      r.chart.data.labels = tail(r.dates, n);
+      r.chart.data.datasets.forEach((ds,i) => { ds.data = tail(r.full[i], n); });
+      const xs = r.chart.options.scales.x;
+      if(xs){ xs.ticks.callback = long ? xTickLong : xTick; xs.ticks.maxTicksLimit = long ? 10 : 8; }
+      r.chart.update('none');
+    });
+    document.querySelectorAll('#periods button').forEach(b => b.classList.toggle('on', b.dataset.p===p));
+  }
+
+  function lineChart(canvas, dates, datasets, opts){
+    const full = datasets.map(d => d.data);
+    const chart = new Chart(canvas, {
       type:'line',
-      data:{labels, datasets},
+      data:{labels:dates, datasets},
       options:Object.assign({
         responsive:true, maintainAspectRatio:false, animation:false,
         interaction:{mode:'index', intersect:false},
         elements:{point:{radius:0, hitRadius:8}, line:{borderWidth:1.8, tension:0}},
         scales:{
-          x:{grid:{display:false}, ticks:{maxTicksLimit:7, callback:(v,i)=>{ const d=labels[i]; return d ? d.slice(2,4)+'.'+d.slice(4,6) : ''; }}},
+          x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick}},
           y:{grid:{color:'#E5E4E1'}, border:{dash:[3,3]}}
         },
-        plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{title:(items)=>fmtDate(labels[items[0].dataIndex])}}}
+        plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{title:(items)=>fmtDate(items[0].label)}}}
       }, opts||{})
     });
+    register(chart, dates, full);
+    return chart;
   }
 
   function sparkline(canvas, values, color){
-    const ctx = canvas.getContext('2d');
-    new Chart(ctx, {type:'line', data:{labels:values.map((_,i)=>i), datasets:[{data:values, borderColor:color, borderWidth:1.4, fill:false}]},
+    new Chart(canvas, {type:'line', data:{labels:values.map((_,i)=>i), datasets:[{data:values, borderColor:color, borderWidth:1.4, fill:false}]},
       options:{responsive:true, maintainAspectRatio:false, animation:false, elements:{point:{radius:0}, line:{tension:0}},
         scales:{x:{display:false}, y:{display:false, min:0, max:100}}, plugins:{legend:{display:false}, tooltip:{enabled:false}}}});
   }
@@ -366,6 +423,8 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       <div class="cap num"><span>상승 ${d.adv.toLocaleString()} (${p(d.adv)}%)</span><span>보합 ${d.unch.toLocaleString()}</span><span>하락 ${d.dec.toLocaleString()} (${p(d.dec)}%)</span></div>`;
   }
 
+  function lastAt(arr, back){ const i = arr.length - 1 - back; return i >= 0 ? arr[i] : null; }
+
   function render(D){
     el('app').innerHTML = '';
     el('app').appendChild(el('tpl').content.cloneNode(true));
@@ -376,24 +435,85 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     el('legend').innerHTML = BANDS.map(b=>`<span><i style="background:${b.color}"></i>${b.name}</span>`).join('');
 
     // compare table
-    const rows = [['현재', D.composite.score, true], ['전일', D.composite.prev], ['1주 전', D.composite.week], ['1개월 전', D.composite.month], ['1년 전', D.composite.year]];
-    el('compare').innerHTML = rows.map(([k,v,now]) => {
+    const C = D.composite;
+    const rows = [['현재', C.score, true], ['전일', C.prev], ['1주 전', C.week], ['1개월 전', C.month], ['1년 전', C.year], ['3년 전', C.year3]];
+    el('compare').innerHTML = rows.filter(r => r[1] != null || r[2]).map(([k,v,now]) => {
       const b = band(v);
       return `<tr class="${now?'now':''}"><td>${k}</td><td><span class="pill" style="background:${b.color}">${b.name}</span></td><td class="v num">${fmt(v,0)}</td></tr>`;
     }).join('');
     const chg = (v) => v==null ? '' : `<span class="${v>=0?'up':'dn'} num">${v>=0?'▲':'▼'} ${fmt(Math.abs(v),2)}%</span>`;
-    el('idx').innerHTML = `<div>KOSPI<b class="num">${fmt(D.index.kospi,2)}</b>${chg(D.index.kospi_chg)}</div><div>KOSDAQ<b class="num">${fmt(D.index.kosdaq,2)}</b>${chg(D.index.kosdaq_chg)}</div><div>구성 지표<b class="num">${D.composite.n_components}개</b>평균</div>`;
+    el('idx').innerHTML = `<div>KOSPI<b class="num">${fmt(D.index.kospi,2)}</b>${chg(D.index.kospi_chg)}</div><div>KOSDAQ<b class="num">${fmt(D.index.kosdaq,2)}</b>${chg(D.index.kosdaq_chg)}</div><div>구성 지표<b class="num">${C.n_components}개</b>평균</div>`;
 
-    // composite chart
-    const S = D.series;
+    // breadth tiles (first-screen summary)
+    const S = D.series, U = D.universe, BA = D.breadth_all;
+    const pct = (a,b) => b ? 100*a/b : null;
+    const p200now = lastAt(S.p200,0), p200wk = lastAt(S.p200,5);
+    const adlNow = lastAt(S.adl,0), adl20 = lastAt(S.adl,20);
+    const hlNet = (U.ALL.nh||0) - (U.ALL.nl||0);
+    el('tiles').innerHTML = `
+      <div class="tile"><div class="k">오늘 상승 종목 비율 (전종목)</div>
+        <div class="v">${fmt(pct(BA.KOSPI.adv, BA.KOSPI.total),0)}<small>% KOSPI</small></div>
+        <div class="s">KOSDAQ <b class="num">${fmt(pct(BA.KOSDAQ.adv, BA.KOSDAQ.total),0)}%</b> · 상승 ${(BA.KOSPI.adv+BA.KOSDAQ.adv).toLocaleString()} / 하락 ${(BA.KOSPI.dec+BA.KOSDAQ.dec).toLocaleString()}</div></div>
+      <div class="tile"><div class="k">200일선 위 종목 비율 (유니버스 ${U.ALL.n})</div>
+        <div class="v">${fmt(p200now,0)}<small>%</small></div>
+        <div class="s">1주 전 대비 ${sign(p200now!=null && p200wk!=null ? p200now-p200wk : null, 1, '%p')} · 50일선 위 <b class="num">${fmt(U.ALL.p50,0)}%</b></div></div>
+      <div class="tile"><div class="k">52주 신고가 − 신저가 (유니버스)</div>
+        <div class="v num">${hlNet>0?'+':''}${hlNet}<small>종목</small></div>
+        <div class="s">신고가 <b class="num">${U.ALL.nh}</b> · 신저가 <b class="num">${U.ALL.nl}</b></div></div>
+      <div class="tile"><div class="k">누적 상승·하락선(ADL) 20일 변화</div>
+        <div class="v num">${adlNow!=null && adl20!=null ? (adlNow-adl20>=0?'+':'')+(adlNow-adl20).toLocaleString() : '-'}</div>
+        <div class="s">20일간 (상승−하락) 종목수 누계 · 10일 평균 <b class="num">${fmt(U.ALL.adr10,1)}%p</b></div></div>`;
+
+    // period selector
+    el('periods').innerHTML = PERIODS.map(([p]) => `<button type="button" data-p="${p}" class="${p===period?'on':''}">${p}</button>`).join('');
+    el('periods').addEventListener('click', e => { const b = e.target.closest('button'); if(b) applyPeriod(b.dataset.p); });
+
+    // composite chart (with KOSPI overlay)
     lineChart(el('c-composite'), S.dates, [
       {label:'종합지수', data:S.composite, borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:2.2},
       {label:'KOSPI', data:S.kospi, borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y2', borderWidth:1.4}
     ], {bandsOn:true, scales:{
-      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:(v,i)=>{const d=S.dates[i]; return d? d.slice(2,4)+'.'+d.slice(4,6):'';}}},
+      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick}},
       y:{min:0, max:100, ticks:{stepSize:25}, grid:{color:'#E5E4E1'}, title:{display:true, text:'종합지수'}},
       y2:{position:'right', grid:{display:false}, title:{display:true, text:'KOSPI'}}
     }});
+    const firstIdx = S.composite.findIndex(v => v != null);
+    const compDays = S.composite.filter(v => v != null).length;
+    el('composite-note').textContent = `표시 구간의 종합지수: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 백분위 계산에 1년치 자료가 필요해 수집 시작 후 첫 1년은 비어 있습니다.`;
+
+    // MA chart
+    lineChart(el('c-ma'), S.dates, [
+      {label:'20일선 위', data:S.p20, borderColor:SOFT, backgroundColor:SOFT, borderWidth:1.2},
+      {label:'50일선 위', data:S.p50, borderColor:BLUE, backgroundColor:BLUE, borderWidth:1.4},
+      {label:'200일선 위', data:S.p200, borderColor:ORANGE, backgroundColor:ORANGE, borderWidth:2}
+    ], {scales:{x:{grid:{display:false}, ticks:{maxTicksLimit:6, callback:xTick}}, y:{min:0, max:100, ticks:{stepSize:20, callback:v=>v+'%'}, grid:{color:'#E5E4E1'}}}});
+
+    // ADL vs KOSPI
+    lineChart(el('c-adl'), S.dates, [
+      {label:'ADL (누적 상승−하락)', data:S.adl, borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:2},
+      {label:'KOSPI', data:S.kospi, borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y2', borderWidth:1.4}
+    ], {scales:{x:{grid:{display:false}, ticks:{maxTicksLimit:6, callback:xTick}}, y:{grid:{color:'#E5E4E1'}}, y2:{position:'right', grid:{display:false}}}});
+
+    // new highs / lows (bar)
+    const nlNeg = S.nl.map(v=>v==null?null:-v);
+    const hl = new Chart(el('c-hl'), {type:'bar', data:{labels:S.dates, datasets:[
+        {label:'52주 신고가', data:S.nh, backgroundColor:ORANGE},
+        {label:'52주 신저가', data:nlNeg, backgroundColor:BLUE}
+      ]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index', intersect:false},
+        scales:{x:{stacked:true, grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick}}, y:{stacked:true, grid:{color:'#E5E4E1'}, ticks:{callback:v=>Math.abs(v)}}},
+        plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{title:(items)=>fmtDate(items[0].label), label:(it)=>`${it.dataset.label}: ${Math.abs(it.raw)}`}}}}});
+    register(hl, S.dates, [S.nh, nlNeg]);
+
+    applyPeriod(period);
+
+    // breadth all + table
+    adBar('ad-kospi', 'KOSPI', BA.KOSPI);
+    adBar('ad-kosdaq', 'KOSDAQ', BA.KOSDAQ);
+    el('ad-note').textContent = `기준일 ${D.asof_fmt} 종가 기준 전일 대비 상승·하락 종목수 (네이버 시가총액 목록, 우선주·ETF 포함).`;
+    const row = (name, u) => `<tr><td>${name}</td><td class="num">${fmt(u.p20,1)}%</td><td class="num">${fmt(u.p50,1)}%</td><td class="num hi">${fmt(u.p200,1)}%</td><td class="num">${u.nh}</td><td class="num">${u.nl}</td><td class="num">${u.adv} / ${u.dec}</td></tr>`;
+    el('bt').innerHTML = row(`전체 (${U.ALL.n})`, U.ALL) + row(`KOSPI200 대용 (${U.KOSPI.n})`, U.KOSPI) + row(`KOSDAQ150 대용 (${U.KOSDAQ.n})`, U.KOSDAQ);
+    el('bt-note').textContent = `KOSPI 유니버스: ${U.kospi_basis === 'top mktcap proxy' ? 'KOSPI 시가총액 상위 200 (지수 대용)' : 'KOSPI200 구성종목'} · KOSDAQ 유니버스: 시가총액 상위 150 (지수 대용). 200일선 위 비율은 장기 추세 참여도입니다.`;
 
     // components
     el('comps').innerHTML = D.components.map((c,i) => {
@@ -402,48 +522,15 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       return `<tr>
         <td><div class="nm">${c.name}</div><div class="ds">${c.desc}</div></td>
         <td class="v num">${c.value_fmt ?? '-'}</td>
-        <td><div class="bar"><i style="width:${w}%;background:${b.color}"></i><span class="mid"></span><b class="num" style="left:${w}%;${w>84?'transform:translateX(calc(-100% - 6px));color:#fff':''}">${fmt(c.score,0)}</b></div><div class="hist" style="margin-top:8px;color:${b.color==='#84888B'?'#3D3D3D':b.color}">${b.name}</div></td>
+        <td><div class="bar"><i style="width:${w}%;background:${b.color}"></i><span class="mid"></span><b class="num" style="left:${w}%;${w>84?'transform:translateX(calc(-100% - 6px));color:#fff':''}">${fmt(c.score,0)}</b></div><div class="hist" style="margin-top:8px;color:${bandText(b)}">${b.name}</div></td>
         <td class="hist num h3">${fmt(c.score_prev,0)} / ${fmt(c.score_week,0)} / ${fmt(c.score_month,0)}</td>
         <td class="sp"><canvas class="spark" id="sp-${i}"></canvas></td>
       </tr>`;
     }).join('');
-    D.components.forEach((c,i) => sparkline(el('sp-'+i), c.series_score, band(c.score).color === '#84888B' ? '#3D3D3D' : band(c.score).color));
+    D.components.forEach((c,i) => sparkline(el('sp-'+i), c.series_score, bandText(band(c.score))));
 
     // method list
     el('method-list').innerHTML = D.components.map(c => `<li><b>${c.name}</b> — ${c.desc}<br><span style="color:#6C6C6C;font-size:14px">출처: ${c.source} · 방향: ${c.invert ? '높을수록 공포(반전)' : '높을수록 탐욕'}</span></li>`).join('');
-
-    // breadth all
-    adBar('ad-kospi', 'KOSPI', D.breadth_all.KOSPI);
-    adBar('ad-kosdaq', 'KOSDAQ', D.breadth_all.KOSDAQ);
-    el('ad-note').textContent = `기준일 ${D.asof_fmt} 종가 기준 전일 대비 상승·하락 종목수 (네이버 시가총액 목록, 우선주·ETF 포함).`;
-
-    // breadth table
-    const U = D.universe;
-    const row = (name, u) => `<tr><td>${name}</td><td class="num">${fmt(u.p20,1)}%</td><td class="num">${fmt(u.p50,1)}%</td><td class="num hi">${fmt(u.p200,1)}%</td><td class="num">${u.nh}</td><td class="num">${u.nl}</td><td class="num">${u.adv} / ${u.dec}</td></tr>`;
-    el('bt').innerHTML = row(`전체 (${U.ALL.n})`, U.ALL) + row(`KOSPI200 대용 (${U.KOSPI.n})`, U.KOSPI) + row(`KOSDAQ150 대용 (${U.KOSDAQ.n})`, U.KOSDAQ);
-    el('bt-note').textContent = `KOSPI 유니버스: ${U.kospi_basis === 'top mktcap proxy' ? 'KOSPI 시가총액 상위 200 (지수 대용)' : 'KOSPI200 구성종목'} · KOSDAQ 유니버스: 시가총액 상위 150 (지수 대용). 200일선 위 비율은 장기 추세 참여도입니다.`;
-
-    // MA chart
-    lineChart(el('c-ma'), S.dates, [
-      {label:'20일선 위', data:S.p20, borderColor:SOFT, backgroundColor:SOFT, borderWidth:1.2},
-      {label:'50일선 위', data:S.p50, borderColor:BLUE, backgroundColor:BLUE, borderWidth:1.4},
-      {label:'200일선 위', data:S.p200, borderColor:ORANGE, backgroundColor:ORANGE, borderWidth:2}
-    ], {scales:{x:{grid:{display:false}, ticks:{maxTicksLimit:6, callback:(v,i)=>{const d=S.dates[i]; return d? d.slice(2,4)+'.'+d.slice(4,6):'';}}}, y:{min:0, max:100, ticks:{stepSize:20, callback:v=>v+'%'}, grid:{color:'#E5E4E1'}}}});
-
-    // ADL vs KOSPI
-    lineChart(el('c-adl'), S.dates, [
-      {label:'ADL (누적 상승−하락)', data:S.adl, borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:2},
-      {label:'KOSPI', data:S.kospi, borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y2', borderWidth:1.4}
-    ], {scales:{x:{grid:{display:false}, ticks:{maxTicksLimit:6, callback:(v,i)=>{const d=S.dates[i]; return d? d.slice(2,4)+'.'+d.slice(4,6):'';}}}, y:{grid:{color:'#E5E4E1'}}, y2:{position:'right', grid:{display:false}}}});
-
-    // new highs / lows
-    new Chart(el('c-hl'), {type:'bar', data:{labels:S.dates, datasets:[
-        {label:'52주 신고가', data:S.nh, backgroundColor:ORANGE},
-        {label:'52주 신저가', data:S.nl.map(v=>v==null?null:-v), backgroundColor:BLUE}
-      ]},
-      options:{responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index', intersect:false},
-        scales:{x:{stacked:true, grid:{display:false}, ticks:{maxTicksLimit:8, callback:(v,i)=>{const d=S.dates[i]; return d? d.slice(2,4)+'.'+d.slice(4,6):'';}}}, y:{stacked:true, grid:{color:'#E5E4E1'}, ticks:{callback:v=>Math.abs(v)}}},
-        plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{title:(items)=>fmtDate(S.dates[items[0].dataIndex]), label:(it)=>`${it.dataset.label}: ${Math.abs(it.raw)}`}}}}});
 
     // status
     const st = Object.entries(D.status||{}).map(([k,v])=>`${k}: ${v}`).join('\n');
