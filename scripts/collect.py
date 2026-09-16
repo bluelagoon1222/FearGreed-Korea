@@ -324,6 +324,43 @@ def naver_foreign_net(start: str) -> dict[str, float]:
 
 
 # ----------------------------------------------------------------------------
+# Yahoo Finance fallback for the universe (batch download; used only if Naver siseJson fails)
+# ----------------------------------------------------------------------------
+def yahoo_universe(universe: list[dict], start: str, end: str) -> dict[str, list[dict]]:
+    try:
+        import yfinance as yf  # noqa: WPS433
+    except Exception as e:  # noqa: BLE001
+        log(f"yfinance not available: {e}")
+        return {}
+    tick = {f"{u['code']}.{'KS' if u['group'] == 'KOSPI' else 'KQ'}": u["code"] for u in universe}
+    out: dict[str, list[dict]] = {}
+    try:
+        df = yf.download(list(tick), start=f"{start[:4]}-{start[4:6]}-{start[6:]}",
+                         end=f"{end[:4]}-{end[4:6]}-{end[6:]}", group_by="ticker",
+                         auto_adjust=False, threads=True, progress=False)
+    except Exception as e:  # noqa: BLE001
+        log(f"yfinance download failed: {e}")
+        return {}
+    for t, code in tick.items():
+        try:
+            sub = df[t] if t in df.columns.get_level_values(0) else None
+            if sub is None:
+                continue
+            rows = []
+            for ts, r in sub.iterrows():
+                c = r.get("Close")
+                if c is None or c != c or c <= 0:
+                    continue
+                rows.append({"date": ts.strftime("%Y%m%d"), "open": None, "high": None, "low": None,
+                             "close": float(c), "volume": float(r.get("Volume") or 0)})
+            if len(rows) >= 60:
+                out[code] = rows
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+# ----------------------------------------------------------------------------
 # KOFIA: margin loan balance (optional, experimental)
 # ----------------------------------------------------------------------------
 def kofia_margin(start: str, end: str) -> dict[str, float]:
@@ -623,9 +660,16 @@ def main() -> None:
 
     breadth_all = {"KOSPI": ad_counts("KOSPI"), "KOSDAQ": ad_counts("KOSDAQ")}
 
-    common = [s for s in all_stocks if s["mktcap"] and is_common_stock(s["code"], s["name"])]
-    kospi_common = sorted([s for s in common if s["market"] == "KOSPI"], key=lambda s: -s["mktcap"])
-    kosdaq_common = sorted([s for s in common if s["market"] == "KOSDAQ"], key=lambda s: -s["mktcap"])
+    common = [s for s in all_stocks if is_common_stock(s["code"], s["name"])]
+    n_mcap = sum(1 for s in common if s["mktcap"])
+    if n_mcap < len(common) * 0.5:      # market-cap column not parsed -> Naver's page order is already by market cap
+        log(f"mktcap parsed for {n_mcap}/{len(common)} rows; using page order")
+        kospi_common = [s for s in common if s["market"] == "KOSPI"]
+        kosdaq_common = [s for s in common if s["market"] == "KOSDAQ"]
+    else:
+        kospi_common = sorted([s for s in common if s["market"] == "KOSPI" and s["mktcap"]], key=lambda s: -s["mktcap"])
+        kosdaq_common = sorted([s for s in common if s["market"] == "KOSDAQ" and s["mktcap"]], key=lambda s: -s["mktcap"])
+    status["listed"] = f"{len(all_stocks)} rows, {len(common)} common stocks, mktcap parsed {n_mcap}"
 
     universe: list[dict] = []
     k200_exact = []
@@ -648,12 +692,15 @@ def main() -> None:
     # ---------------- 3. universe price history ----------------
     closes: dict[str, list] = {}
     fails = 0
+    errors: list[str] = []
+    naver_aborted = False
     for k, s in enumerate(universe):
         if budget_left() < 240:
             log("time budget low, stopping universe fetch")
             break
         if k >= 8 and not closes:
-            log("first 8 universe fetches all failed, aborting universe fetch")
+            log("first 8 universe fetches all failed, aborting Naver universe fetch")
+            naver_aborted = True
             break
         try:
             if DEMO:
@@ -662,13 +709,28 @@ def main() -> None:
                 rows = naver_daily(s["code"], start, end)
             if len(rows) < 60:
                 fails += 1
+                if len(errors) < 3:
+                    errors.append(f"{s['code']} rows={len(rows)}")
                 continue
             closes[s["code"]] = align(rows)
         except Exception as e:  # noqa: BLE001
             fails += 1
+            if len(errors) < 3:
+                errors.append(f"{s['code']} {str(e)[:120]}")
             if fails <= 5:
                 log(f"history failed {s['code']} {s['name']}: {e}")
-    status["universe_history"] = f"{len(closes)} ok / {fails} failed"
+    status["universe_history"] = f"naver: {len(closes)} ok / {fails} failed"
+    if errors:
+        status["universe_errors"] = " | ".join(errors)
+    if not DEMO and (naver_aborted or len(closes) < len(universe) * 0.5):
+        log("falling back to Yahoo Finance for the universe")
+        y_rows = yahoo_universe(universe, start, end)
+        added = 0
+        for code, rows in y_rows.items():
+            if code not in closes:
+                closes[code] = align(rows)
+                added += 1
+        status["universe_history"] += f" + yahoo: {added} added"
     log(f"universe history: {status['universe_history']}")
 
     # ---------------- 4. breadth series over the universe ----------------
