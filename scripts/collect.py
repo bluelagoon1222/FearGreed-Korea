@@ -39,9 +39,10 @@ DEMO = "--demo" in sys.argv
 CFG = {
     "universe_kospi": 200,          # KOSPI large caps (KOSPI200 proxy; exact list used when available)
     "universe_kosdaq": 150,         # KOSDAQ large caps (KOSDAQ150 proxy)
-    "history_years": 3,             # needed: 1y chart + 250d percentile window + 252d 52w lookback
+    "history_years": 7,             # 5y chart + 250d percentile window + 252d 52w lookback
     "pct_window": 250,              # trading days used for percentile scoring
-    "series_days": 250,             # days published for charts
+    "series_days": 1250,            # ~5 trading years published for charts
+    "spark_days": 250,              # per-component sparkline length
     "timeout": 20,
     "retries": 3,
     "sleep": 0.12,
@@ -293,7 +294,7 @@ def naver_foreign_net(start: str) -> dict[str, float]:
     url = "https://finance.naver.com/sise/investorDealTrendDay.naver"
     bizdate = NOW.strftime("%Y%m%d")
     out: dict[str, float] = {}
-    for page in range(1, 80):
+    for page in range(1, 400):
         html = fetch_text(url, {"bizdate": bizdate, "sosok": "", "page": page}, encoding="euc-kr")
         soup = BeautifulSoup(html, "lxml")
         table = soup.select_one("table.type_1") or soup.find("table")
@@ -326,27 +327,105 @@ def naver_foreign_net(start: str) -> dict[str, float]:
 # KOFIA: margin loan balance (optional, experimental)
 # ----------------------------------------------------------------------------
 def kofia_margin(start: str, end: str) -> dict[str, float]:
+    """Margin-loan balance by day. Queried in one-year chunks (the API caps long ranges)."""
     url = "https://freesis.kofia.or.kr/meta/getMetaDataList.do"
-    payload = {"dmSearch": {"tmpV40": "1000000", "tmpV41": "1", "tmpV1": "D",
-                            "tmpV45": start, "tmpV46": end,
-                            "OBJ_NM": "STATSCU0100000060BO"}}
-    r = SESSION.post(url, json=payload, timeout=CFG["timeout"],
-                     headers={"Content-Type": "application/json",
-                              "Referer": "https://freesis.kofia.or.kr/"})
-    r.raise_for_status()
-    js = r.json()
-    rows = js.get("ds1") if isinstance(js, dict) else None
-    if not rows and isinstance(js, dict):
-        rows = next((v for v in js.values() if isinstance(v, list)), [])
     out: dict[str, float] = {}
-    for row in rows or []:
-        d = str(row.get("TMPV1", ""))[:8]
-        v = to_num(row.get("TMPV2"))
-        if re.fullmatch(r"\d{8}", d) and v and v > 0:
-            out[d] = v
+    cur = dt.datetime.strptime(start, "%Y%m%d")
+    last = dt.datetime.strptime(end, "%Y%m%d")
+    while cur <= last:
+        nxt = min(cur + dt.timedelta(days=364), last)
+        payload = {"dmSearch": {"tmpV40": "1000000", "tmpV41": "1", "tmpV1": "D",
+                                "tmpV45": cur.strftime("%Y%m%d"), "tmpV46": nxt.strftime("%Y%m%d"),
+                                "OBJ_NM": "STATSCU0100000060BO"}}
+        r = SESSION.post(url, json=payload, timeout=CFG["timeout"],
+                         headers={"Content-Type": "application/json",
+                                  "Referer": "https://freesis.kofia.or.kr/"})
+        r.raise_for_status()
+        js = r.json()
+        rows = js.get("ds1") if isinstance(js, dict) else None
+        if not rows and isinstance(js, dict):
+            rows = next((v for v in js.values() if isinstance(v, list)), [])
+        for row in rows or []:
+            d = str(row.get("TMPV1", ""))[:8]
+            v = to_num(row.get("TMPV2"))
+            if re.fullmatch(r"\d{8}", d) and v and v > 0:
+                out[d] = v
+        cur = nxt + dt.timedelta(days=1)
+        time.sleep(CFG["sleep"])
     if len(out) < 60:
         raise RuntimeError(f"kofia rows too few: {len(out)}")
     return out
+
+
+# ----------------------------------------------------------------------------
+# VKOSPI (best effort, several Naver routes; values validated 3 < v < 200)
+# ----------------------------------------------------------------------------
+def fetch_vkospi(start: str, end: str) -> tuple[dict[str, float], str]:
+    def ok(vals: dict) -> bool:
+        return len(vals) >= 250
+
+    # 1) siseJson
+    try:
+        rows = naver_daily("VKOSPI", start, end)
+        vals = {r["date"]: r["close"] for r in rows if 3 < r["close"] < 200}
+        if ok(vals):
+            return vals, "naver siseJson"
+        log(f"vkospi siseJson rows: {len(vals)}")
+    except Exception as e:  # noqa: BLE001
+        log(f"vkospi siseJson failed: {e}")
+
+    # 2) mobile API (paged JSON)
+    try:
+        out: dict[str, float] = {}
+        for page in range(1, 120):
+            r = SESSION.get("https://m.stock.naver.com/api/index/VKOSPI/price",
+                            params={"pageSize": 100, "page": page}, timeout=CFG["timeout"])
+            if r.status_code != 200:
+                break
+            js = r.json()
+            items = js if isinstance(js, list) else (js.get("data") or js.get("items") or []) if isinstance(js, dict) else []
+            added = 0
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                d = re.sub(r"\D", "", str(it.get("localTradedAt") or it.get("date") or ""))[:8]
+                v = to_num(it.get("closePrice") or it.get("close") or it.get("clpr"))
+                if re.fullmatch(r"\d{8}", d) and v and 3 < v < 200 and d not in out:
+                    out[d] = v
+                    added += 1
+            time.sleep(CFG["sleep"])
+            if added == 0 or min(out) <= start:
+                break
+        if ok(out):
+            return out, "naver mobile api"
+        log(f"vkospi mobile api rows: {len(out)}")
+    except Exception as e:  # noqa: BLE001
+        log(f"vkospi mobile api failed: {e}")
+
+    # 3) index daily HTML page
+    try:
+        rows = naver_index_daily_html("VKOSPI", start)
+        vals = {r["date"]: r["close"] for r in rows if 3 < r["close"] < 200}
+        if ok(vals):
+            return vals, "naver index page"
+        log(f"vkospi index page rows: {len(vals)}")
+    except Exception as e:  # noqa: BLE001
+        log(f"vkospi index page failed: {e}")
+
+    # 4) realtime endpoint: current value only (accumulates in history.json over time)
+    try:
+        r = SESSION.get("https://polling.finance.naver.com/api/realtime/domestic/index/VKOSPI",
+                        timeout=CFG["timeout"])
+        js = r.json()
+        datas = js.get("datas") if isinstance(js, dict) else None
+        it = datas[0] if datas else (js if isinstance(js, dict) else {})
+        v = to_num(it.get("closePrice") or it.get("close"))
+        d = re.sub(r"\D", "", str(it.get("localTradedAt") or ""))[:8] or end
+        if v and 3 < v < 200:
+            return {d: v}, "naver realtime (current value only)"
+    except Exception as e:  # noqa: BLE001
+        log(f"vkospi realtime failed: {e}")
+    return {}, "unavailable"
 
 
 # ----------------------------------------------------------------------------
@@ -490,7 +569,7 @@ def main() -> None:
 
     # ---------------- 1. indices ----------------
     if DEMO:
-        dts = demo_dates(760)
+        dts = demo_dates(1760)
         kospi = demo_walk(dts, 2600, 0.012, 0.0006, 1)
         kosdaq = demo_walk(dts, 850, 0.015, 0.0002, 2)
         kpi200 = demo_walk(dts, 350, 0.012, 0.0006, 3)
@@ -648,6 +727,16 @@ def main() -> None:
         }
 
     # ---------------- 5. other inputs ----------------
+    hist_path = DATA_DIR / "history.json"
+    history: list[dict] = []
+    if hist_path.exists():
+        try:
+            history = json.loads(hist_path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            history = []
+    stored_vk = {h["date"]: h["vkospi"] for h in history
+                 if isinstance(h, dict) and h.get("vkospi") and re.fullmatch(r"\d{8}", str(h.get("date", "")))}
+
     if DEMO:
         bond = demo_walk(dates, 100000, 0.002, 0.0001, 11)
         lev = [demo_walk(dates, 20000, 0.024, 0.001, 21), demo_walk(dates, 8000, 0.03, 0.0005, 22)]
@@ -659,6 +748,11 @@ def main() -> None:
         for d in dates:
             p *= math.exp(rng.gauss(0.0003, 0.006))
             margin[d] = p
+        vk, lvl = {}, 22.0
+        for d in dates:
+            lvl = max(8.0, lvl + rng.gauss(0, 1.2) + (20 - lvl) * 0.03)
+            vk[d] = lvl
+        vk_src = "demo"
         status.update(bond="demo", etf="demo", foreign="demo", margin="demo")
     else:
         try:
@@ -683,7 +777,12 @@ def main() -> None:
             status["margin"] = f"ok ({len(margin)} days)"
         except Exception as e:  # noqa: BLE001
             margin, status["margin"] = {}, f"skip: {e}"
-    log(f"inputs: bond={status['bond']} etf={status['etf']} foreign={status['foreign']} margin={status['margin']}")
+        vk, vk_src = fetch_vkospi(start, end)
+    vk_all = dict(stored_vk)
+    vk_all.update(vk)
+    status["vkospi"] = f"{vk_src} ({len(vk)} fetched, {len(vk_all)} total incl. stored)"
+    log(f"inputs: bond={status['bond']} etf={status['etf']} foreign={status['foreign']} "
+        f"margin={status['margin']} vkospi={status['vkospi']}")
 
     # ---------------- 6. component raw series ----------------
     W = CFG["pct_window"]
@@ -708,11 +807,27 @@ def main() -> None:
                       desc="유니버스 상승 종목 비율에서 하락 종목 비율을 뺀 값의 10일 평균. 소수 대형주만 오르는 장은 낮게 나옵니다.",
                       source="네이버 금융 종목별 일별 시세"))
 
-    # 6-4 volatility: realized 20-day vol of KOSPI (VKOSPI substitute), inverted
-    comps.append(dict(key="volatility", name="변동성 (공포지수 대용)", raw=realized_vol(kospi_c, 20),
-                      invert=True, unit="%",
-                      desc="KOSPI 20일 실현변동성(연율). 변동성이 1년 범위에서 높을수록 공포. VKOSPI 연동은 KRX Open API 승인 후 교체 예정.",
-                      source="네이버 금융 KOSPI 일별 지수 (계산값)"))
+    # 6-4 volatility: VKOSPI when >= 200 daily values are available, else realized 20-day vol (inverted)
+    vk_al = [vk_all.get(d) for d in dates]
+    last_v = None
+    for i in range(n_days):                     # forward-fill gaps of a few days
+        if vk_al[i] is None and last_v is not None and i >= 1 and vk_al[i - 1] is not None:
+            vk_al[i] = last_v
+        elif vk_al[i] is not None:
+            last_v = vk_al[i]
+    vk_count = sum(1 for v in vk_al if v is not None)
+    if vk_count >= 200:
+        comps.append(dict(key="volatility", name="변동성 (VKOSPI)", raw=vk_al, invert=True, unit="pt",
+                          desc="코스피200 변동성지수(VKOSPI). 옵션 가격에 반영된 향후 30일 기대 변동성으로, 1년 범위에서 높을수록 공포.",
+                          source=f"네이버 금융 VKOSPI ({vk_src})"))
+        volatility_mode = "vkospi"
+    else:
+        comps.append(dict(key="volatility", name="변동성 (실현변동성 대용)", raw=realized_vol(kospi_c, 20),
+                          invert=True, unit="%",
+                          desc="KOSPI 20일 실현변동성(연율). VKOSPI 일별 자료가 200일 이상 확보되면 자동으로 VKOSPI로 전환됩니다.",
+                          source="네이버 금융 KOSPI 일별 지수 (계산값)"))
+        volatility_mode = "realized"
+    status["volatility_mode"] = f"{volatility_mode} (vkospi days aligned: {vk_count})"
 
     # 6-5 safe haven: KOSPI 20d return minus bond ETF 20d return
     if bond:
@@ -792,9 +907,10 @@ def main() -> None:
 
     S = CFG["series_days"]
     sl = slice(max(0, n_days - S), n_days)
+    sp = slice(max(0, n_days - CFG["spark_days"]), n_days)
 
-    def cut(series: list, nd=2):
-        return [rnd(x, nd) for x in series[sl]]
+    def cut(series: list, nd=2, s_=None):
+        return [rnd(x, nd) for x in series[s_ or sl]]
 
     def fmt_value(c: dict):
         v = c["raw"][last_i]
@@ -803,7 +919,7 @@ def main() -> None:
         if c["unit"] == "억원":
             return f"{v:+,.0f}억원"
         if c["key"] in ("leverage", "volatility"):
-            return f"{v:.1f}%"
+            return f"{v:.1f}{'pt' if c['unit'] == 'pt' else '%'}"
         return f"{v:+.2f}{c['unit']}"
 
     comp_out = []
@@ -814,7 +930,7 @@ def main() -> None:
             "score": rnd(c["score"][last_i], 1), "label": label_for(c["score"][last_i]),
             "score_prev": at(c["score"], 1), "score_week": at(c["score"], 5), "score_month": at(c["score"], 21),
             "desc": c["desc"], "source": c["source"],
-            "series_score": cut(c["score"], 1), "series_raw": cut(c["raw"], 3),
+            "series_score": cut(c["score"], 1, sp), "series_raw": cut(c["raw"], 3, sp),
         })
 
     def gsum(g: str) -> dict:
@@ -834,6 +950,7 @@ def main() -> None:
         "composite": {
             "score": rnd(composite[last_i], 1), "label": label_for(composite[last_i]),
             "prev": at(composite, 1), "week": at(composite, 5), "month": at(composite, 21), "year": at(composite, 250),
+            "year3": at(composite, 750),
             "n_components": len([c for c in comps if c["score"][last_i] is not None]),
         },
         "index": {
@@ -852,26 +969,27 @@ def main() -> None:
             "kospi_p200": cut(breadth_series["KOSPI"]["p200"], 1), "kosdaq_p200": cut(breadth_series["KOSDAQ"]["p200"], 1),
             "hl": cut(breadth_series["ALL"]["hl"], 2), "adl": cut(breadth_series["ALL"]["adl"], 0),
             "nh": agg["ALL"]["nh"][sl], "nl": agg["ALL"]["nl"][sl],
+            "vkospi": cut(vk_al, 2),
+            "composite_days": sum(1 for x in composite if x is not None),
         },
         "status": status,
         "log_tail": LOG_LINES[-12:],
     }
 
     # ---------------- 8. history.json (persistent daily log) ----------------
-    hist_path = DATA_DIR / "history.json"
-    history: list[dict] = []
-    if hist_path.exists():
-        try:
-            history = json.loads(hist_path.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
-            history = []
     rec = {
         "date": asof, "composite": latest["composite"]["score"],
         "scores": {c["key"]: c["score"] for c in comp_out},
         "kospi": latest["index"]["kospi"], "kosdaq": latest["index"]["kosdaq"],
         "breadth_all": breadth_all,
         "universe_p200": latest["universe"]["ALL"]["p200"],
+        "vkospi": rnd(vk_all.get(asof), 2),
     }
+    # keep newly fetched VKOSPI values for past dates too (so a current-only source accumulates)
+    known = {h.get("date"): h for h in history if isinstance(h, dict)}
+    for d, v in vk.items():
+        if d != asof and d in known and not known[d].get("vkospi"):
+            known[d]["vkospi"] = rnd(v, 2)
     history = [h for h in history if h.get("date") != asof] + [rec]
     history.sort(key=lambda h: h["date"])
     hist_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
