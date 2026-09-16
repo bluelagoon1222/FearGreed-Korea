@@ -1,0 +1,83 @@
+{
+ "asof": "20260916",
+ "generated_at": "2026-09-16 16:03 KST",
+ "composite": {
+  "score": 40.0,
+  "label": "공포",
+  "prev": 34.35,
+  "week": 48.2,
+  "month": 42.9,
+  "year": 58.75,
+  "year3": 44.55,
+  "n_components": 8
+ },
+ "components": {
+  "momentum": 5.8,
+  "strength": 14.6,
+  "breadth": 46.6,
+  "volatility": 55.4,
+  "safehaven": 38.6,
+  "foreign": 34.2,
+  "leverage": 91.8,
+  "margin": 33.4
+ },
+ "breadth_all": {
+  "KOSPI": {
+   "adv": 1071,
+   "dec": 922,
+   "unch": 150,
+   "total": 2143
+  },
+  "KOSDAQ": {
+   "adv": 753,
+   "dec": 833,
+   "unch": 180,
+   "total": 1766
+  }
+ },
+ "universe": {
+  "size": 348,
+  "kospi_basis": "kospi200 exact (199)",
+  "kosdaq_basis": "top mktcap proxy"
+ },
+ "universe_all": {
+  "n": 348,
+  "adv": 115,
+  "dec": 217,
+  "unch": 16,
+  "p20": 39.1,
+  "p50": 54.0,
+  "p200": 33.8,
+  "nh": 1,
+  "nl": 11,
+  "adr10": -3.62
+ },
+ "status": {
+  "index": "ok",
+  "market_sum": "html 0 / mobile api 3909",
+  "listed": "3909 rows, 2561 common stocks, mktcap parsed 2561",
+  "universe_kospi": "kospi200 exact (199)",
+  "universe_kosdaq": "top mktcap proxy",
+  "universe_history": "naver: 348 ok / 1 failed",
+  "universe_errors": "950260 rows=22",
+  "bond": "ok",
+  "etf": "ok",
+  "foreign": "ok (1730 days)",
+  "margin": "ok (1736 days)",
+  "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
+  "volatility_mode": "realized (vkospi days aligned: 0)"
+ },
+ "log": [
+  "[16:03:46] index rows: KOSPI 1730  KOSDAQ 1730  asof 20260916",
+  "[16:03:48] market_sum sosok=0: no stock table (tables=0, html=119551b, title=Npay 利沅)",
+  "[16:03:49] market_sum sosok=1: no stock table (tables=0, html=119551b, title=Npay 利沅)",
+  "[16:03:49] market list from HTML too short, trying Naver mobile API",
+  "[16:04:06] listed rows: 3909",
+  "[16:04:12] universe: 349  (kospi200 exact (199))",
+  "[16:06:06] universe history: naver: 348 ok / 1 failed",
+  "[16:07:37] vkospi siseJson rows: 0",
+  "[16:07:38] vkospi mobile api rows: 0",
+  "[16:07:38] vkospi index page rows: 0",
+  "[16:07:39] inputs: bond=ok etf=ok foreign=ok (1730 days) margin=ok (1736 days) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+ ]
+}
