@@ -61,7 +61,7 @@ a{color:var(--blue)}
 .pill{display:inline-block;min-width:82px;text-align:center;padding:1px 8px;border-radius:2px;color:#fff;font-size:14px;font-weight:500;line-height:1.5}
 .idx{display:flex;gap:28px;margin-top:14px;font-size:15px;color:var(--muted)}
 .idx b{display:block;font-size:20px;color:var(--ink);font-weight:600}
-.idx .up{color:#C62828}.idx .dn{color:var(--blue)}
+.idx .up{color:#1E7F3C}.idx .dn{color:#B3261E}
 
 /* breadth tiles */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:26px 0 8px}
@@ -71,7 +71,7 @@ a{color:var(--blue)}
 .tile .v small{font-size:15px;font-weight:500;color:var(--muted);margin-left:4px;letter-spacing:0}
 .tile .s{font-size:14px;color:var(--muted)}
 .tile .s b{font-weight:600;color:var(--ink)}
-.tile .s .up{color:#C62828}.tile .s .dn{color:var(--blue)}
+.tile .s .up{color:#1E7F3C}.tile .s .dn{color:#B3261E}
 
 /* period selector */
 .periods{display:inline-flex;border:1px solid var(--hair);border-radius:2px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px}
@@ -199,7 +199,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     <div class="sec-head">
       <div>
         <h2>종합지수 히스토리</h2>
-        <p class="lead">종합지수(오렌지, 0~100)와 KOSPI(파랑, 오른쪽 축). 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다. 배경 띠는 공포·중립·탐욕 구간입니다.</p>
+        <p class="lead">종합지수(0~100, 왼쪽 축)는 50 미만 구간을 빨강, 50 이상 구간을 녹색으로 그리고, KOSPI(네이비, 오른쪽 축)를 겹쳐 보입니다. 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다. 배경 띠는 공포·중립·탐욕 구간입니다.</p>
       </div>
       <div class="periods" id="periods" role="group" aria-label="차트 기간"></div>
     </div>
@@ -296,18 +296,19 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
 
 <script>
 (function(){
+  const RED='#B3261E', RED_SOFT='#E8837A', GREEN='#1E7F3C', GREEN_SOFT='#7CC28C';
   const BANDS = [
-    {max:25,  name:'극단적 공포', color:'#043B72'},
-    {max:45,  name:'공포',        color:'#7E9FC3'},
-    {max:55,  name:'중립',        color:'#84888B'},
-    {max:75,  name:'탐욕',        color:'#FAB072'},
-    {max:100, name:'극단적 탐욕', color:'#F58220'}
+    {max:25,  name:'극단적 공포', color:RED},
+    {max:45,  name:'공포',        color:RED_SOFT},
+    {max:55,  name:'중립',        color:'#9AA0A6'},
+    {max:75,  name:'탐욕',        color:GREEN_SOFT},
+    {max:100, name:'극단적 탐욕', color:GREEN}
   ];
   const ORANGE='#F58220', BLUE='#043B72', SOFT='#FAB072', GRAY='#84888B';
   const PERIODS = [['3M',63],['6M',126],['1Y',250],['3Y',750],['5Y',1250]];
   let period = '1Y';
   const band = s => (s==null) ? {name:'-',color:GRAY} : BANDS.find(b => s < b.max || b.max===100);
-  const bandText = b => b.color === '#84888B' ? '#3D3D3D' : b.color;
+  const bandText = b => b.color === '#9AA0A6' ? '#3D3D3D' : b.color;
   const fmt = (v, d=1) => (v==null || isNaN(v)) ? '-' : Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d, maximumFractionDigits:d});
   const fmtDate = s => s ? `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}` : '-';
   const el = (id) => document.getElementById(id);
@@ -327,7 +328,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       const {ctx, chartArea, scales} = chart;
       const y = scales.y; if(!y || !chart.options.bandsOn) return;
       const edges = [0,25,45,55,75,100];
-      const cols = ['rgba(4,59,114,.10)','rgba(126,159,195,.10)','rgba(132,136,139,.06)','rgba(250,176,114,.14)','rgba(245,130,32,.14)'];
+      const cols = ['rgba(179,38,30,.13)','rgba(232,131,122,.12)','rgba(154,160,166,.07)','rgba(124,194,140,.14)','rgba(30,127,60,.14)'];
       ctx.save();
       for(let i=0;i<5;i++){
         const y1 = y.getPixelForValue(edges[i+1]), y2 = y.getPixelForValue(edges[i]);
@@ -469,14 +470,19 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     el('periods').addEventListener('click', e => { const b = e.target.closest('button'); if(b) applyPeriod(b.dataset.p); });
 
     // composite chart (with KOSPI overlay)
+    const segColor = ctx => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2 < 50) ? RED : GREEN;
     lineChart(el('c-composite'), S.dates, [
-      {label:'종합지수', data:S.composite, borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:2.2},
+      {label:'종합지수 (50 미만 빨강 · 50 이상 녹색)', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.2,
+       segment:{borderColor:segColor}},
       {label:'KOSPI', data:S.kospi, borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y2', borderWidth:1.4}
     ], {bandsOn:true, scales:{
       x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick}},
       y:{min:0, max:100, ticks:{stepSize:25}, grid:{color:'#E5E4E1'}, title:{display:true, text:'종합지수'}},
       y2:{position:'right', grid:{display:false}, title:{display:true, text:'KOSPI'}}
-    }});
+    }, plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{
+      title:(items)=>fmtDate(items[0].label),
+      labelColor:(it)=>{ if(it.datasetIndex===0){ const c = (it.parsed.y==null||it.parsed.y<50)?RED:GREEN; return {borderColor:c, backgroundColor:c}; } return {borderColor:BLUE, backgroundColor:BLUE}; }
+    }}}});
     const firstIdx = S.composite.findIndex(v => v != null);
     const compDays = S.composite.filter(v => v != null).length;
     el('composite-note').textContent = `표시 구간의 종합지수: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 백분위 계산에 1년치 자료가 필요해 수집 시작 후 첫 1년은 비어 있습니다.`;
