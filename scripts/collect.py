@@ -959,9 +959,9 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             status["etf"] = f"fail: {e}"
         try:
-            inv = naver_investor_net(start)
-            foreign = {d: v["foreign"] for d, v in inv.items() if v.get("foreign") is not None}
-            individual = {d: v["individual"] for d, v in inv.items() if v.get("individual") is not None}
+            inv_flows = naver_investor_net(start)
+            foreign = {d: v["foreign"] for d, v in inv_flows.items() if v.get("foreign") is not None}
+            individual = {d: v["individual"] for d, v in inv_flows.items() if v.get("individual") is not None}
             status["foreign"] = f"ok ({len(foreign)} days, individual {len(individual)})"
         except Exception as e:  # noqa: BLE001
             foreign, individual, status["foreign"] = {}, {}, f"fail: {e}"
