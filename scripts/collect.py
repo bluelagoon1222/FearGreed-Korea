@@ -342,10 +342,11 @@ def naver_kospi200_codes() -> list[str]:
 # ----------------------------------------------------------------------------
 # Naver Finance: investor trend (foreign net buying, KOSPI, 억원)
 # ----------------------------------------------------------------------------
-def naver_foreign_net(start: str) -> dict[str, float]:
+def naver_investor_net(start: str) -> dict[str, dict]:
+    """Daily net buying (억원) by investor type for KOSPI: {date: {"foreign": v, "individual": v}}."""
     url = "https://finance.naver.com/sise/investorDealTrendDay.naver"
     bizdate = NOW.strftime("%Y%m%d")
-    out: dict[str, float] = {}
+    out: dict[str, dict] = {}
     for page in range(1, 400):
         html = fetch_text(url, {"bizdate": bizdate, "sosok": "", "page": page}, encoding="euc-kr")
         soup = BeautifulSoup(html, "lxml")
@@ -354,10 +355,11 @@ def naver_foreign_net(start: str) -> dict[str, float]:
             break
         headers = [th.get_text(strip=True) for th in table.find_all("th")]
         fidx = next((i for i, h in enumerate(headers) if "외국인" in h), 2)
+        iidx = next((i for i, h in enumerate(headers) if h.startswith("개인")), 1)
         added = 0
         for tr in table.find_all("tr"):
             tds = [td.get_text(strip=True) for td in tr.find_all("td")]
-            if len(tds) <= fidx:
+            if len(tds) <= max(fidx, iidx):
                 continue
             m = re.match(r"(\d{2,4})\.(\d{2})\.(\d{2})", tds[0])
             if not m:
@@ -365,14 +367,39 @@ def naver_foreign_net(start: str) -> dict[str, float]:
             y = int(m.group(1))
             y = y + 2000 if y < 100 else y
             d = f"{y:04d}{m.group(2)}{m.group(3)}"
-            v = to_num(tds[fidx])
-            if v is None or d in out:
+            fv, iv = to_num(tds[fidx]), to_num(tds[iidx])
+            if fv is None or d in out:
                 continue
-            out[d] = v
+            out[d] = {"foreign": fv, "individual": iv}
             added += 1
         if added == 0 or (out and min(out) <= start):
             break
     return out
+
+
+def naver_index_turnover(code: str, start: str) -> tuple[dict[str, float], str]:
+    """Daily trading value of an index from Naver's mobile API (best effort). Returns ({date: value}, unit_label)."""
+    url = f"https://m.stock.naver.com/api/index/{code}/price"
+    out: dict[str, float] = {}
+    for page in range(1, 60):
+        r = SESSION.get(url, params={"pageSize": 100, "page": page}, timeout=CFG["timeout"])
+        if r.status_code != 200:
+            break
+        js = r.json()
+        items = js if isinstance(js, list) else (js.get("data") or js.get("items") or []) if isinstance(js, dict) else []
+        added = 0
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            d = re.sub(r"\D", "", str(it.get("localTradedAt") or ""))[:8]
+            v = to_num(it.get("accumulatedTradingValue"))
+            if re.fullmatch(r"\d{8}", d) and v and v > 0 and d not in out:
+                out[d] = v
+                added += 1
+        time.sleep(CFG["sleep"])
+        if added == 0 or min(out) <= start:
+            break
+    return out, "naver mobile api (accumulatedTradingValue)"
 
 
 # ----------------------------------------------------------------------------
@@ -615,6 +642,28 @@ def label_for(score: float | None) -> str:
     return "극단적 탐욕"
 
 
+def heat_label(score: float | None) -> str:
+    if score is None:
+        return "-"
+    if score < 25:
+        return "냉각"
+    if score < 45:
+        return "낮음"
+    if score <= 55:
+        return "보통"
+    if score <= 75:
+        return "과열 주의"
+    return "과열 위험"
+
+
+def median(vals: list) -> float | None:
+    v = sorted(x for x in vals if x is not None)
+    if not v:
+        return None
+    n = len(v)
+    return v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2.0
+
+
 def sma_last(vals: list, w: int):
     m = rolling_mean(vals, w)
     return m[-1] if m else None
@@ -838,6 +887,15 @@ def main() -> None:
     def ratio(num: list, den: list) -> list:
         return [(100.0 * num[i] / den[i]) if den[i] else None for i in range(n_days)]
 
+    # median 20-day return across the universe (used by the overheat gauge)
+    ret20_by_day: list[list] = [[] for _ in range(n_days)]
+    for code, c in closes.items():
+        r20 = pct_change(c, 20)
+        for i in range(n_days):
+            if r20[i] is not None:
+                ret20_by_day[i].append(r20[i])
+    median_ret20 = [median(v) if len(v) >= 50 else None for v in ret20_by_day]
+
     breadth_series = {}
     for g in groups:
         a = agg[g]
@@ -873,6 +931,9 @@ def main() -> None:
         inv = [demo_walk(dates, 3000, 0.024, -0.001, 23), demo_walk(dates, 4000, 0.03, -0.0005, 24)]
         rng = random.Random(3)
         foreign = {d: rng.gauss(0, 4000) for d in dates}
+        individual = {d: -foreign[d] + rng.gauss(0, 1500) for d in dates}
+        turnover = {d: abs(rng.gauss(1.2e7, 3e6)) for d in dates}
+        turnover_src = "demo"
         margin = {}
         p = 2.0e7
         for d in dates:
@@ -898,10 +959,21 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             status["etf"] = f"fail: {e}"
         try:
-            foreign = naver_foreign_net(start)
-            status["foreign"] = f"ok ({len(foreign)} days)"
+            inv = naver_investor_net(start)
+            foreign = {d: v["foreign"] for d, v in inv.items() if v.get("foreign") is not None}
+            individual = {d: v["individual"] for d, v in inv.items() if v.get("individual") is not None}
+            status["foreign"] = f"ok ({len(foreign)} days, individual {len(individual)})"
         except Exception as e:  # noqa: BLE001
-            foreign, status["foreign"] = {}, f"fail: {e}"
+            foreign, individual, status["foreign"] = {}, {}, f"fail: {e}"
+        try:
+            turnover, turnover_src = naver_index_turnover("KOSPI", start)
+            if len(turnover) < 250:
+                raise RuntimeError(f"rows={len(turnover)}")
+        except Exception as e:  # noqa: BLE001
+            log(f"turnover api failed ({e}); using KOSPI volume from siseJson")
+            turnover = {r["date"]: r["volume"] for r in kospi if r.get("volume")}
+            turnover_src = "naver siseJson volume (shares)"
+        status["turnover"] = f"{turnover_src} ({len(turnover)} days)"
         try:
             margin = kofia_margin(start, end)
             status["margin"] = f"ok ({len(margin)} days)"
@@ -985,7 +1057,7 @@ def main() -> None:
 
     # 6-7 leverage appetite: leverage ETF turnover share vs inverse (5-day)
     if lev and inv:
-        def turnover(rows_list):
+        def etf_turnover(rows_list):
             tot = [0.0] * n_days
             for rows in rows_list:
                 c, v = align(rows), align(rows, "volume")
@@ -993,7 +1065,7 @@ def main() -> None:
                     if c[i] and v[i]:
                         tot[i] += c[i] * v[i]
             return tot
-        lt, it = turnover(lev), turnover(inv)
+        lt, it = etf_turnover(lev), etf_turnover(inv)
         share = [None] * n_days
         for i in range(4, n_days):
             l5, i5 = sum(lt[i - 4:i + 1]), sum(it[i - 4:i + 1])
@@ -1031,6 +1103,107 @@ def main() -> None:
     if composite[last_i] is None:
         raise SystemExit("composite could not be computed for the latest day")
 
+    # ---------------- 7b. overheat gauge (top-finding) ----------------
+    W3 = 750
+    ret20 = pct_change(kospi_c, 20)
+    ret60 = pct_change(kospi_c, 60)
+    heat: list[dict] = []
+
+    ma200 = rolling_mean(kospi_c, 200)
+    dist200 = [((kospi_c[i] / ma200[i] - 1) * 100.0) if (kospi_c[i] and ma200[i]) else None for i in range(n_days)]
+    heat.append(dict(key="h_trend", name="장기 추세 이격", raw=dist200, unit="%", window=W3,
+                     desc="KOSPI가 200일 이동평균에서 위로 벗어난 정도(3년 백분위). 장기 평균에서 멀어질수록 과열.",
+                     source="네이버 금융 KOSPI 일별 지수"))
+    heat.append(dict(key="h_speed", name="상승 속도", raw=ret60, unit="%", window=W3,
+                     desc="KOSPI 60일 수익률(3년 백분위). 석 달 안에 얼마나 빨리 올랐는지.",
+                     source="네이버 금융 KOSPI 일별 지수"))
+
+    vol_raw = vk_al if volatility_mode == "vkospi" else realized_vol(kospi_c, 20)
+    vol_pct = percentile_scores(vol_raw, W, invert=False)
+    up_vol = [None] * n_days
+    for i in range(n_days):
+        if vol_pct[i] is not None and ret60[i] is not None:
+            factor = max(0.0, min(1.0, ret60[i] / 10.0))    # full weight once the 60-day gain reaches +10%
+            up_vol[i] = vol_pct[i] * factor
+    heat.append(dict(key="h_upvol", name="상승장 변동성", raw=vol_raw, unit="%", window=None, score_direct=up_vol,
+                     desc="상승 추세(60일 수익률 +10% 이상)에서의 변동성 백분위. 오르면서 흔들림이 커지는 것은 과열, 하락장의 변동성은 0으로 처리.",
+                     source="네이버 금융 KOSPI 일별 지수 (계산값)" + (" / VKOSPI" if volatility_mode == "vkospi" else "")))
+
+    if individual:
+        i_al = [individual.get(d) for d in dates]
+        i20 = [None] * n_days
+        for i in range(19, n_days):
+            vals = [x for x in i_al[i - 19:i + 1] if x is not None]
+            if len(vals) >= 15:
+                i20[i] = sum(vals)
+        heat.append(dict(key="h_retail", name="개인 순매수", raw=i20, unit="억원", window=W,
+                         desc="KOSPI 개인 순매수 20일 누적(1년 백분위). 개인 매수 강도가 높을수록 과열.",
+                         source="네이버 금융 투자자별 매매동향"))
+
+    if margin:
+        heat.append(dict(key="h_margin", name="신용융자 잔고 수준", raw=m_al, unit="원", window=W3,
+                         desc="신용거래융자 잔고 수준(3년 백분위). 잔고가 역사적 고점에 머물면 계속 과열로 읽습니다.",
+                         source="금융투자협회 종합통계"))
+
+    lev_comp = next((c for c in comps if c["key"] == "leverage"), None)
+    if lev_comp:
+        heat.append(dict(key="h_leverage", name="레버리지 선호", raw=lev_comp["raw"], unit="%", window=W,
+                         desc="레버리지 ETF 거래대금 비중(1년 백분위). 공포·탐욕 지수와 같은 자료.",
+                         source=lev_comp["source"]))
+
+    if any(v is not None for v in median_ret20):
+        div = [None] * n_days
+        for i in range(n_days):
+            if ret20[i] is not None and median_ret20[i] is not None:
+                gap = ret20[i] - median_ret20[i]
+                div[i] = gap if ret20[i] > 0 else min(0.0, gap)
+        heat.append(dict(key="h_gap", name="지수-종목 괴리", raw=div, unit="%p", window=W3,
+                         desc="KOSPI 20일 수익률 − 유니버스 종목 중앙값 20일 수익률(3년 백분위). 소수 대형주만 지수를 끌어올리는 좁은 상승일수록 과열.",
+                         source="네이버 금융 지수·종목별 일별 시세 (계산값)"))
+
+    if turnover:
+        t_al = [turnover.get(d) for d in dates]
+        t20 = rolling_mean([v if v else None for v in t_al], 20)
+        heat.append(dict(key="h_turnover", name="거래 강도", raw=t20,
+                         unit="원" if "TradingValue" in turnover_src else "주", window=W3,
+                         desc="KOSPI 거래대금(또는 거래량) 20일 평균의 3년 백분위. 거래가 역사적으로 뜨거울수록 과열.",
+                         source=turnover_src))
+
+    for h in heat:
+        h["score"] = h["score_direct"] if h.get("score_direct") is not None else percentile_scores(h["raw"], h["window"], invert=False)
+
+    overheat = [None] * n_days
+    for i in range(n_days):
+        sc = [h["score"][i] for h in heat if h["score"][i] is not None]
+        if len(sc) >= 4:
+            overheat[i] = sum(sc) / len(sc)
+
+    # ---------------- 7c. backtest on known tops and bottoms ----------------
+    episodes = [
+        ("고점", "2021.1 동학개미 정점", "20210101", "20210228"),
+        ("고점", "2024.7 밸류업 랠리 고점", "20240601", "20240731"),
+        ("고점", "2026.2 KOSPI 5000", "20260115", "20260305"),
+        ("고점", "2026.6 KOSPI 9000", "20260515", "20260705"),
+        ("저점", "2022.9~10 긴축 충격", "20220901", "20221031"),
+        ("저점", "2024.8 블랙먼데이", "20240725", "20240815"),
+        ("저점", "2025.4 관세 충격", "20250325", "20250430"),
+        ("저점", "2026.3 이란 전쟁", "20260301", "20260415"),
+        ("저점", "2026.7~8 급락", "20260710", "20260820"),
+    ]
+    backtest = []
+    for kind, name, a, b in episodes:
+        idxs = [i for i, d in enumerate(dates) if a <= d <= b and kospi_c[i]]
+        if not idxs:
+            continue
+        j = max(idxs, key=lambda i: kospi_c[i]) if kind == "고점" else min(idxs, key=lambda i: kospi_c[i])
+        fg, oh = composite[j], overheat[j]
+        if kind == "고점":
+            verdict = "포착" if (oh is not None and oh >= 70) else ("부분" if (oh is not None and oh >= 55) else "미포착")
+        else:
+            verdict = "포착" if (fg is not None and fg <= 25) else ("부분" if (fg is not None and fg <= 40) else "미포착")
+        backtest.append({"kind": kind, "name": name, "date": dates[j], "kospi": rnd(kospi_c[j]),
+                         "feargreed": rnd(fg, 1), "overheat": rnd(oh, 1), "verdict": verdict})
+
     def at(series: list, back: int):
         j = last_i - back
         return rnd(series[j]) if j >= 0 else None
@@ -1048,7 +1221,15 @@ def main() -> None:
             return None
         if c["unit"] == "억원":
             return f"{v:+,.0f}억원"
-        if c["key"] in ("leverage", "volatility"):
+        if c["unit"] == "원":                       # KOFIA / Naver amounts: unit inferred from magnitude
+            if v >= 5e6:
+                return f"{v / 1e6:,.1f}조원"          # 백만원 단위
+            if v >= 5e4:
+                return f"{v / 1e4:,.1f}조원"          # 억원 단위
+            return f"{v:,.0f}"
+        if c["unit"] == "주":
+            return f"{v:,.0f}주"
+        if c["key"] in ("leverage", "volatility", "h_leverage", "h_upvol"):
             return f"{v:.1f}{'pt' if c['unit'] == 'pt' else '%'}"
         return f"{v:+.2f}{c['unit']}"
 
@@ -1061,6 +1242,17 @@ def main() -> None:
             "score_prev": at(c["score"], 1), "score_week": at(c["score"], 5), "score_month": at(c["score"], 21),
             "desc": c["desc"], "source": c["source"],
             "series_score": cut(c["score"], 1, sp), "series_raw": cut(c["raw"], 3, sp),
+        })
+
+    heat_out = []
+    for h in heat:
+        heat_out.append({
+            "key": h["key"], "name": h["name"], "unit": h["unit"],
+            "value": rnd(h["raw"][last_i], 3), "value_fmt": fmt_value(h),
+            "score": rnd(h["score"][last_i], 1), "label": heat_label(h["score"][last_i]),
+            "score_prev": at(h["score"], 1), "score_week": at(h["score"], 5), "score_month": at(h["score"], 21),
+            "desc": h["desc"], "source": h["source"],
+            "series_score": cut(h["score"], 1, sp),
         })
 
     def gsum(g: str) -> dict:
@@ -1089,7 +1281,19 @@ def main() -> None:
             "kospi": rnd(kospi_c[last_i]), "kospi_chg": rnd(pct_change(kospi_c, 1)[last_i]),
             "kosdaq": rnd(kosdaq_c[last_i]), "kosdaq_chg": rnd(pct_change(kosdaq_c, 1)[last_i]),
         },
+        "overheat": {
+            "score": rnd(overheat[last_i], 1), "label": heat_label(overheat[last_i]),
+            "prev": at(overheat, 1), "week": at(overheat, 5), "month": at(overheat, 21), "year": at(overheat, 250),
+            "year3": at(overheat, 750),
+            "n_components": len([h for h in heat if h["score"][last_i] is not None]),
+        },
         "components": comp_out,
+        "heat_components": heat_out,
+        "backtest": backtest,
+        "flows": {
+            "foreign20": rnd(next((c for c in comps if c["key"] == "foreign"), {"raw": [None] * n_days})["raw"][last_i], 0),
+            "individual20": rnd(next((h for h in heat if h["key"] == "h_retail"), {"raw": [None] * n_days})["raw"][last_i], 0),
+        },
         "breadth_all": breadth_all,
         "universe": {"ALL": gsum("ALL"), "KOSPI": gsum("KOSPI"), "KOSDAQ": gsum("KOSDAQ"),
                      "size": len(closes), "kospi_basis": status.get("universe_kospi"),
@@ -1102,13 +1306,14 @@ def main() -> None:
             "hl": cut(breadth_series["ALL"]["hl"], 2), "adl": cut(breadth_series["ALL"]["adl"], 0),
             "nh": agg["ALL"]["nh"][sl], "nl": agg["ALL"]["nl"][sl],
             "vkospi": cut(vk_al, 2),
+            "overheat": cut(overheat, 1),
             "composite_days": sum(1 for x in composite if x is not None),
         },
     }
 
     # ---------------- 8. history.json (persistent daily log) ----------------
     rec = {
-        "date": asof, "composite": latest["composite"]["score"],
+        "date": asof, "composite": latest["composite"]["score"], "overheat": latest["overheat"]["score"],
         "scores": {c["key"]: c["score"] for c in comp_out},
         "kospi": latest["index"]["kospi"], "kosdaq": latest["index"]["kosdaq"],
         "breadth_all": breadth_all,
@@ -1130,12 +1335,17 @@ def main() -> None:
                                           encoding="utf-8")
     (DATA_DIR / "status.json").write_text(json.dumps({
         "asof": asof, "generated_at": latest["generated_at"], "composite": latest["composite"],
-        "components": {c["key"]: c["score"] for c in comp_out}, "breadth_all": breadth_all,
+        "overheat": latest["overheat"],
+        "components": {c["key"]: c["score"] for c in comp_out},
+        "heat_components": {h["key"]: h["score"] for h in heat_out},
+        "backtest": backtest, "breadth_all": breadth_all,
         "universe": {k: v for k, v in latest["universe"].items() if k in ("size", "kospi_basis", "kosdaq_basis")},
         "universe_all": latest["universe"]["ALL"], "status": status, "log": LOG_LINES[-40:],
     }, ensure_ascii=False, indent=1), encoding="utf-8")
-    log(f"done: composite {latest['composite']['score']} ({latest['composite']['label']}), "
-        f"{latest['composite']['n_components']} components, {time.time() - START_TS:.0f}s")
+    log(f"done: feargreed {latest['composite']['score']} ({latest['composite']['label']}) / "
+        f"overheat {latest['overheat']['score']} ({latest['overheat']['label']}), "
+        f"{latest['composite']['n_components']}+{latest['overheat']['n_components']} components, "
+        f"{time.time() - START_TS:.0f}s")
 
 
 if __name__ == "__main__":
