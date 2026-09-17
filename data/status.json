@@ -1,45 +1,45 @@
 {
- "asof": "20260916",
- "generated_at": "2026-09-16 23:14 KST",
+ "asof": "20260917",
+ "generated_at": "2026-09-17 09:37 KST",
  "composite": {
-  "score": 40.0,
+  "score": 38.0,
   "label": "공포",
-  "prev": 34.35,
-  "week": 48.2,
-  "month": 42.9,
-  "year": 58.75,
-  "year3": 44.55,
+  "prev": 38.2,
+  "week": 45.85,
+  "month": 36.3,
+  "year": 62.6,
+  "year3": 43.7,
   "n_components": 8
  },
  "overheat": {
-  "score": 39.7,
+  "score": 30.1,
   "label": "낮음",
-  "prev": 32.49,
-  "week": 41.01,
-  "month": 36.11,
-  "year": 49.17,
-  "year3": 43.38,
+  "prev": 37.82,
+  "week": 41.61,
+  "month": 35.79,
+  "year": 54.38,
+  "year3": 40.46,
   "n_components": 8
  },
  "components": {
-  "momentum": 5.8,
+  "momentum": 6.2,
   "strength": 14.6,
-  "breadth": 46.6,
-  "volatility": 55.4,
-  "safehaven": 38.6,
-  "foreign": 34.2,
-  "leverage": 91.8,
-  "margin": 33.4
+  "breadth": 52.8,
+  "volatility": 65.0,
+  "safehaven": 21.8,
+  "foreign": 32.2,
+  "leverage": 73.8,
+  "margin": 37.8
  },
  "heat_components": {
-  "h_trend": 58.1,
-  "h_speed": 0.2,
+  "h_trend": 58.2,
+  "h_speed": 2.1,
   "h_upvol": 0.0,
-  "h_retail": 4.6,
-  "h_margin": 84.4,
-  "h_leverage": 91.8,
-  "h_gap": 77.5,
-  "h_turnover": 0.7
+  "h_retail": 10.2,
+  "h_margin": 84.3,
+  "h_leverage": 73.8,
+  "h_gap": 12.1,
+  "h_turnover": 0.1
  },
  "backtest": [
   {
@@ -126,16 +126,16 @@
  ],
  "breadth_all": {
   "KOSPI": {
-   "adv": 1107,
-   "dec": 877,
-   "unch": 159,
-   "total": 2143
+   "adv": 1224,
+   "dec": 621,
+   "unch": 300,
+   "total": 2145
   },
   "KOSDAQ": {
-   "adv": 855,
-   "dec": 739,
-   "unch": 172,
-   "total": 1766
+   "adv": 805,
+   "dec": 738,
+   "unch": 218,
+   "total": 1761
   }
  },
  "universe": {
@@ -145,44 +145,44 @@
  },
  "universe_all": {
   "n": 348,
-  "adv": 118,
-  "dec": 219,
-  "unch": 11,
-  "p20": 40.2,
-  "p50": 54.9,
+  "adv": 193,
+  "dec": 133,
+  "unch": 22,
+  "p20": 42.5,
+  "p50": 56.9,
   "p200": 34.4,
   "nh": 1,
-  "nl": 12,
-  "adr10": -3.59
+  "nl": 8,
+  "adr10": -1.15
  },
  "status": {
   "index": "ok",
-  "market_sum": "html 0 / mobile api 3909",
-  "listed": "3909 rows, 2561 common stocks, mktcap parsed 2561",
+  "market_sum": "html 0 / mobile api 3906",
+  "listed": "3906 rows, 2553 common stocks, mktcap parsed 2553",
   "universe_kospi": "kospi200 exact (199)",
   "universe_kosdaq": "top mktcap proxy",
   "universe_history": "naver: 348 ok / 1 failed",
-  "universe_errors": "950260 rows=22",
+  "universe_errors": "950260 rows=23",
   "bond": "ok",
   "etf": "ok",
   "foreign": "ok (1730 days, individual 1730)",
   "turnover": "naver siseJson volume (shares) (1730 days)",
-  "margin": "ok (1736 days)",
+  "margin": "ok (1735 days)",
   "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[23:14:58] index rows: KOSPI 1730  KOSDAQ 1730  asof 20260916",
-  "[23:15:00] market_sum sosok=0: no stock table (tables=0, html=119551b, title=Npay 利沅)",
-  "[23:15:01] market_sum sosok=1: no stock table (tables=0, html=119551b, title=Npay 利沅)",
-  "[23:15:01] market list from HTML too short, trying Naver mobile API",
-  "[23:15:16] listed rows: 3909",
-  "[23:15:22] universe: 349  (kospi200 exact (199))",
-  "[23:17:09] universe history: naver: 348 ok / 1 failed",
-  "[23:18:35] turnover api failed (rows=0); using KOSPI volume from siseJson",
-  "[23:18:39] vkospi siseJson rows: 0",
-  "[23:18:40] vkospi mobile api rows: 0",
-  "[23:18:40] vkospi index page rows: 0",
-  "[23:18:41] inputs: bond=ok etf=ok foreign=ok (1730 days, individual 1730) margin=ok (1736 days) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[09:37:34] index rows: KOSPI 1730  KOSDAQ 1730  asof 20260917",
+  "[09:37:36] market_sum sosok=0: no stock table (tables=0, html=119551b, title=Npay 利沅)",
+  "[09:37:37] market_sum sosok=1: no stock table (tables=0, html=119551b, title=Npay 利沅)",
+  "[09:37:37] market list from HTML too short, trying Naver mobile API",
+  "[09:37:53] listed rows: 3906",
+  "[09:37:59] universe: 349  (kospi200 exact (199))",
+  "[09:39:54] universe history: naver: 348 ok / 1 failed",
+  "[09:41:23] turnover api failed (rows=0); using KOSPI volume from siseJson",
+  "[09:41:27] vkospi siseJson rows: 0",
+  "[09:41:28] vkospi mobile api rows: 0",
+  "[09:41:28] vkospi index page rows: 0",
+  "[09:41:29] inputs: bond=ok etf=ok foreign=ok (1730 days, individual 1730) margin=ok (1735 days) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
