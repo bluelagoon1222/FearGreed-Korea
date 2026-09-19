@@ -442,10 +442,17 @@ def yahoo_universe(universe: list[dict], start: str, end: str) -> dict[str, list
 # ----------------------------------------------------------------------------
 # KOFIA: margin loan balance (optional, experimental)
 # ----------------------------------------------------------------------------
-def kofia_margin(start: str, end: str) -> dict[str, float]:
-    """Margin-loan balance by day. Queried in one-year chunks (the API caps long ranges)."""
+# Known 신용거래융자 잔고 (KOSPI+KOSDAQ) values used to identify the right KOFIA column and unit
+KOFIA_ANCHORS = {"20260211": 31.3180e12, "20260515": 36.5675e12}   # KRW
+
+
+def kofia_margin(start: str, end: str) -> tuple[dict[str, float], str]:
+    """Margin-loan (신용거래융자) balance by day in KRW.
+    The KOFIA statistics table returns unnamed columns TMPV2..TMPVn; the column and unit (억원/백만원)
+    are chosen by matching two published reference values, so a layout change cannot silently
+    switch the series to a different credit aggregate. Returns ({date: KRW}, description)."""
     url = "https://freesis.kofia.or.kr/meta/getMetaDataList.do"
-    out: dict[str, float] = {}
+    raw_rows: list[dict] = []
     cur = dt.datetime.strptime(start, "%Y%m%d")
     last = dt.datetime.strptime(end, "%Y%m%d")
     while cur <= last:
@@ -461,16 +468,42 @@ def kofia_margin(start: str, end: str) -> dict[str, float]:
         rows = js.get("ds1") if isinstance(js, dict) else None
         if not rows and isinstance(js, dict):
             rows = next((v for v in js.values() if isinstance(v, list)), [])
-        for row in rows or []:
-            d = str(row.get("TMPV1", ""))[:8]
-            v = to_num(row.get("TMPV2"))
-            if re.fullmatch(r"\d{8}", d) and v and v > 0:
-                out[d] = v
+        raw_rows.extend(row for row in (rows or []) if isinstance(row, dict))
         cur = nxt + dt.timedelta(days=1)
         time.sleep(CFG["sleep"])
-    if len(out) < 60:
-        raise RuntimeError(f"kofia rows too few: {len(out)}")
-    return out
+    by_date: dict[str, dict] = {}
+    for row in raw_rows:
+        d = str(row.get("TMPV1", ""))[:8]
+        if re.fullmatch(r"\d{8}", d):
+            by_date[d] = row
+    if len(by_date) < 60:
+        raise RuntimeError(f"kofia rows too few: {len(by_date)}")
+
+    keys = sorted({k for row in by_date.values() for k in row if re.fullmatch(r"TMPV\d+", k) and k != "TMPV1"})
+    best, best_err = None, 1e9
+    for k in keys:
+        for unit_name, mult in (("억원", 1e8), ("백만원", 1e6), ("원", 1.0)):
+            errs = []
+            for ad, target in KOFIA_ANCHORS.items():
+                row = by_date.get(ad)
+                v = to_num(row.get(k)) if row else None
+                if v is None or v <= 0:
+                    continue
+                errs.append(abs(v * mult - target) / target)
+            if len(errs) == len(KOFIA_ANCHORS):
+                e = sum(errs) / len(errs)
+                if e < best_err:
+                    best, best_err = (k, unit_name, mult), e
+    if best is None or best_err > 0.05:
+        # anchors not in range (or layout unknown): fall back to the first column, flagged as unverified
+        k, unit_name, mult = "TMPV2", "단위 미확인", 1.0
+        desc = f"column {k} unverified (best err {best_err:.2%})"
+    else:
+        k, unit_name, mult = best
+        desc = f"column {k} = 신용거래융자 ({unit_name}, err {best_err:.2%})"
+    out = {d: to_num(row.get(k)) * mult for d, row in by_date.items()
+           if to_num(row.get(k)) is not None and to_num(row.get(k)) > 0}
+    return out, desc
 
 
 # ----------------------------------------------------------------------------
@@ -808,6 +841,7 @@ def main() -> None:
 
     # ---------------- 3. universe price history ----------------
     closes: dict[str, list] = {}
+    vols: dict[str, list] = {}
     fails = 0
     errors: list[str] = []
     naver_aborted = False
@@ -830,6 +864,7 @@ def main() -> None:
                     errors.append(f"{s['code']} rows={len(rows)}")
                 continue
             closes[s["code"]] = align(rows)
+            vols[s["code"]] = align(rows, "volume")
         except Exception as e:  # noqa: BLE001
             fails += 1
             if len(errors) < 3:
@@ -846,6 +881,7 @@ def main() -> None:
         for code, rows in y_rows.items():
             if code not in closes:
                 closes[code] = align(rows)
+                vols[code] = align(rows, "volume")
                 added += 1
         status["universe_history"] += f" + yahoo: {added} added"
     log(f"universe history: {status['universe_history']}")
@@ -896,6 +932,18 @@ def main() -> None:
                 ret20_by_day[i].append(r20[i])
     median_ret20 = [median(v) if len(v) >= 50 else None for v in ret20_by_day]
 
+    # universe trading value (KRW) = sum(close x volume) over stocks with both fields
+    uni_turnover = [0.0] * n_days
+    uni_turnover_n = [0] * n_days
+    for code, c in closes.items():
+        v = vols.get(code)
+        if not v:
+            continue
+        for i in range(n_days):
+            if c[i] and v[i]:
+                uni_turnover[i] += c[i] * v[i]
+                uni_turnover_n[i] += 1
+
     breadth_series = {}
     for g in groups:
         a = agg[g]
@@ -932,13 +980,16 @@ def main() -> None:
         rng = random.Random(3)
         foreign = {d: rng.gauss(0, 4000) for d in dates}
         individual = {d: -foreign[d] + rng.gauss(0, 1500) for d in dates}
-        turnover = {d: abs(rng.gauss(1.2e7, 3e6)) for d in dates}
-        turnover_src = "demo"
+        turnover = {dates[i]: uni_turnover[i] for i in range(n_days) if uni_turnover_n[i] >= 100}
+        turnover_src = "demo (universe trading value)"
+        status["turnover"] = turnover_src
         margin = {}
         p = 2.0e7
         for d in dates:
             p *= math.exp(rng.gauss(0.0003, 0.006))
             margin[d] = p
+        margin = {d: v * 1e6 for d, v in margin.items()}      # demo values -> KRW scale (백만원 기준)
+        margin_desc = "demo"
         vk, lvl = {}, 22.0
         for d in dates:
             lvl = max(8.0, lvl + rng.gauss(0, 1.2) + (20 - lvl) * 0.03)
@@ -969,16 +1020,20 @@ def main() -> None:
             turnover, turnover_src = naver_index_turnover("KOSPI", start)
             if len(turnover) < 250:
                 raise RuntimeError(f"rows={len(turnover)}")
+            med = median(list(turnover.values()))
+            if med and med < 1e10:                       # values reported in 백만원 -> KRW
+                turnover = {d: v * 1e6 for d, v in turnover.items()}
+            turnover_src = "KOSPI 거래대금 (" + turnover_src + ")"
         except Exception as e:  # noqa: BLE001
-            log(f"turnover api failed ({e}); using KOSPI volume from siseJson")
-            turnover = {r["date"]: r["volume"] for r in kospi if r.get("volume")}
-            turnover_src = "naver siseJson volume (shares)"
+            log(f"turnover api failed ({e}); using universe trading value")
+            turnover = {dates[i]: uni_turnover[i] for i in range(n_days) if uni_turnover_n[i] >= 100}
+            turnover_src = "유니버스 350종목 거래대금 합계 (계산값)"
         status["turnover"] = f"{turnover_src} ({len(turnover)} days)"
         try:
-            margin = kofia_margin(start, end)
-            status["margin"] = f"ok ({len(margin)} days)"
+            margin, margin_desc = kofia_margin(start, end)
+            status["margin"] = f"ok ({len(margin)} days, {margin_desc})"
         except Exception as e:  # noqa: BLE001
-            margin, status["margin"] = {}, f"skip: {e}"
+            margin, margin_desc, status["margin"] = {}, "", f"skip: {e}"
         vk, vk_src = fetch_vkospi(start, end)
     vk_all = dict(stored_vk)
     vk_all.update(vk)
@@ -1164,9 +1219,8 @@ def main() -> None:
     if turnover:
         t_al = [turnover.get(d) for d in dates]
         t20 = rolling_mean([v if v else None for v in t_al], 20)
-        heat.append(dict(key="h_turnover", name="거래 강도", raw=t20,
-                         unit="원" if "TradingValue" in turnover_src else "주", window=W3,
-                         desc="KOSPI 거래대금(또는 거래량) 20일 평균의 3년 백분위. 거래가 역사적으로 뜨거울수록 과열.",
+        heat.append(dict(key="h_turnover", name="거래 강도", raw=t20, unit="원", window=W3,
+                         desc="거래대금 20일 평균의 3년 백분위. 거래가 역사적으로 뜨거울수록 과열.",
                          source=turnover_src))
 
     for h in heat:
@@ -1221,14 +1275,8 @@ def main() -> None:
             return None
         if c["unit"] == "억원":
             return f"{v:+,.0f}억원"
-        if c["unit"] == "원":                       # KOFIA / Naver amounts: unit inferred from magnitude
-            if v >= 5e6:
-                return f"{v / 1e6:,.1f}조원"          # 백만원 단위
-            if v >= 5e4:
-                return f"{v / 1e4:,.1f}조원"          # 억원 단위
-            return f"{v:,.0f}"
-        if c["unit"] == "주":
-            return f"{v:,.0f}주"
+        if c["unit"] == "원":                       # KRW amounts
+            return f"{v / 1e12:,.1f}조원" if v >= 1e11 else f"{v / 1e8:,.0f}억원"
         if c["key"] in ("leverage", "volatility", "h_leverage", "h_upvol"):
             return f"{v:.1f}{'pt' if c['unit'] == 'pt' else '%'}"
         return f"{v:+.2f}{c['unit']}"
