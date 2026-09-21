@@ -444,6 +444,97 @@ def _investor_api(url: str, start: str) -> dict[str, dict]:
     return out
 
 
+def naver_investor_trend(start: str, cached: dict[str, dict], trading_dates: list[str]) -> tuple[dict[str, dict], str]:
+    """m.stock.naver.com/api/index/KOSPI/trend returns one day's 개인/외국인/기관 순매수 (억원).
+    Probes whether a date parameter or paging exposes history; otherwise accumulates one day per run."""
+    base = "https://m.stock.naver.com/api/index/KOSPI/trend"
+
+    def get(params=None):
+        r = SESSION.get(base, params=params, timeout=CFG["timeout"])
+        if r.status_code != 200:
+            return None
+        try:
+            js = r.json()
+        except Exception:  # noqa: BLE001
+            return None
+        return js
+
+    def parse(js) -> tuple | None:
+        if not isinstance(js, dict):
+            return None
+        d = re.sub(r"\D", "", str(js.get("bizdate") or js.get("localTradedAt") or js.get("date") or ""))[:8]
+        keys = list(js.keys())
+        fk = _pick_key(keys, ("foreign",), ("value", "amount", "amt"), ("ratio", "hold"))
+        ik = _pick_key(keys, ("personal", "individual", "indiv", "retail"), ("value", "amount", "amt"), ("ratio",))
+        fv = to_num(js.get(fk)) if fk else None
+        iv = to_num(js.get(ik)) if ik else None
+        if not re.fullmatch(r"\d{8}", d) or fv is None:
+            return None
+        return d, fv, iv
+
+    out: dict[str, dict] = dict(cached)
+    j0 = get()
+    if isinstance(j0, list):                      # list variant: page through
+        got = 0
+        for page in range(1, 120):
+            js = j0 if page == 1 else get({"pageSize": 100, "page": page})
+            items = js if isinstance(js, list) else []
+            added = 0
+            for it in items:
+                p = parse(it)
+                if p and p[0] not in out:
+                    out[p[0]] = {"foreign": p[1], "individual": p[2]}
+                    added += 1
+                    got += 1
+            if added == 0 or min(out) <= start:
+                break
+            time.sleep(CFG["sleep"])
+        return out, f"trend list ({got} new rows)"
+    p0 = parse(j0)
+    if p0 is None:
+        raise RuntimeError(f"trend endpoint unusable: {str(j0)[:80]}")
+    out[p0[0]] = {"foreign": p0[1], "individual": p0[2]}
+    mode = "snapshot only (1 day per run)"
+    missing = [d for d in reversed(trading_dates) if d < p0[0] and d not in out and d >= start]
+    if missing:
+        for pname in ("bizdate", "date", "tradeDate"):
+            js = get({pname: missing[0]})
+            p = parse(js) if js else None
+            if p and p[0] == missing[0]:
+                mode = f"date param '{pname}'"
+                fetched = 0
+                for d in missing[:1500]:
+                    if budget_left() < 200:
+                        mode += " (budget stop)"
+                        break
+                    js = get({pname: d})
+                    p = parse(js) if js else None
+                    if p and p[0] == d:
+                        out[d] = {"foreign": p[1], "individual": p[2]}
+                        fetched += 1
+                    time.sleep(CFG["sleep"] / 2)
+                mode += f", backfilled {fetched}"
+                break
+        else:
+            js = get({"pageSize": 1, "page": 2})
+            p = parse(js) if js else None
+            if p and p[0] != p0[0]:
+                mode = "paging"
+                for page in range(2, 1800):
+                    if budget_left() < 200:
+                        mode += " (budget stop)"
+                        break
+                    js = get({"pageSize": 1, "page": page})
+                    p = parse(js) if js else None
+                    if not p or p[0] in out:
+                        break
+                    out[p[0]] = {"foreign": p[1], "individual": p[2]}
+                    if p[0] <= start:
+                        break
+                    time.sleep(CFG["sleep"] / 2)
+    return out, mode
+
+
 def naver_investor_net(start: str) -> dict[str, dict]:
     """Daily net buying (억원) by investor type for KOSPI: {date: {"foreign": v, "individual": v}}."""
     try:
@@ -455,10 +546,8 @@ def naver_investor_net(start: str) -> dict[str, dict]:
     except Exception as e:  # noqa: BLE001
         INVESTOR_PROBE.append(f"legacy html: {str(e)[-60:]}")
     for url in ("https://m.stock.naver.com/api/index/KOSPI/investor",
-                "https://m.stock.naver.com/api/index/KOSPI/trend",
                 "https://m.stock.naver.com/api/index/KOSPI/investorTrend",
-                "https://api.stock.naver.com/index/KOSPI/investor",
-                "https://api.stock.naver.com/index/KOSPI/trend"):
+                "https://m.stock.naver.com/api/index/KOSPI/trend/daily"):
         try:
             out = _investor_api(url, start)
             if len(out) >= 250:
@@ -570,30 +659,44 @@ def kofia_margin(start: str, end: str) -> tuple[dict[str, float], str]:
     if len(by_date) < 60:
         raise RuntimeError(f"kofia rows too few: {len(by_date)}")
 
-    keys = sorted({k for row in by_date.values() for k in row if re.fullmatch(r"TMPV\d+", k) and k != "TMPV1"})
+    keys = sorted({k for row in by_date.values() for k in row if re.fullmatch(r"TMPV\d+", k) and k != "TMPV1"},
+                  key=lambda k: int(k[4:]))
+    # candidates: single columns, and sums of 2-3 consecutive columns (e.g. 유가증권 + 코스닥 when no total column exists)
+    combos: list[tuple[str, ...]] = [(k,) for k in keys]
+    combos += [tuple(keys[i:i + 2]) for i in range(len(keys) - 1)]
+    combos += [tuple(keys[i:i + 3]) for i in range(len(keys) - 2)]
+
+    def value(row: dict, combo: tuple[str, ...]):
+        vals = [to_num(row.get(k)) for k in combo]
+        if any(v is None or v <= 0 for v in vals):
+            return None
+        return sum(vals)
+
     best, best_err = None, 1e9
-    for k in keys:
+    for combo in combos:
         for unit_name, mult in (("억원", 1e8), ("백만원", 1e6), ("원", 1.0)):
             errs = []
             for ad, target in KOFIA_ANCHORS.items():
                 row = by_date.get(ad)
-                v = to_num(row.get(k)) if row else None
-                if v is None or v <= 0:
+                v = value(row, combo) if row else None
+                if v is None:
                     continue
                 errs.append(abs(v * mult - target) / target)
             if len(errs) == len(KOFIA_ANCHORS):
                 e = sum(errs) / len(errs)
                 if e < best_err:
-                    best, best_err = (k, unit_name, mult), e
+                    best, best_err = (combo, unit_name, mult), e
     if best is None or best_err > 0.05:
-        # anchors not in range (or layout unknown): fall back to the first column, flagged as unverified
-        k, unit_name, mult = "TMPV2", "단위 미확인", 1.0
-        desc = f"column {k} unverified (best err {best_err:.2%})"
+        combo, unit_name, mult = ("TMPV2",), "단위 미확인", 1.0
+        desc = f"column TMPV2 unverified (best {'+'.join(best[0]) if best else '-'} err {best_err:.2%})"
     else:
-        k, unit_name, mult = best
-        desc = f"column {k} = 신용거래융자 ({unit_name}, err {best_err:.2%})"
-    out = {d: to_num(row.get(k)) * mult for d, row in by_date.items()
-           if to_num(row.get(k)) is not None and to_num(row.get(k)) > 0}
+        combo, unit_name, mult = best
+        desc = f"column {'+'.join(combo)} = 신용거래융자 ({unit_name}, err {best_err:.2%})"
+    out = {}
+    for d, row in by_date.items():
+        v = value(row, combo)
+        if v is not None:
+            out[d] = v * mult
     return out, desc
 
 
@@ -1100,13 +1203,37 @@ def main() -> None:
             status["etf"] = "ok"
         except Exception as e:  # noqa: BLE001
             status["etf"] = f"fail: {e}"
+        flows_cache: dict[str, dict] = {}
+        fpath = DATA_DIR / "flows.json"
+        if fpath.exists():
+            try:
+                flows_cache = {k: v for k, v in json.loads(fpath.read_text(encoding="utf-8")).items()
+                               if re.fullmatch(r"\d{8}", k) and isinstance(v, dict)}
+            except Exception:  # noqa: BLE001
+                flows_cache = {}
+        for h in history:                                   # snapshots saved on earlier runs
+            if isinstance(h, dict) and isinstance(h.get("flows"), dict) and h.get("date") not in flows_cache:
+                flows_cache[h["date"]] = h["flows"]
+        inv_flows: dict[str, dict] = {}
         try:
             inv_flows = naver_investor_net(start)
-            foreign = {d: v["foreign"] for d, v in inv_flows.items() if v.get("foreign") is not None}
-            individual = {d: v["individual"] for d, v in inv_flows.items() if v.get("individual") is not None}
-            status["foreign"] = f"ok ({len(foreign)} days, individual {len(individual)})"
+            status["foreign"] = f"ok ({len(inv_flows)} days, list route)"
         except Exception as e:  # noqa: BLE001
-            foreign, individual, status["foreign"] = {}, {}, f"fail: {e}"
+            status["foreign"] = f"list routes: {e}"
+        if len(inv_flows) < 250:
+            try:
+                inv_flows, mode = naver_investor_trend(start, flows_cache, dates)
+                status["foreign"] = f"trend endpoint: {mode}, {len(inv_flows)} days total"
+            except Exception as e:  # noqa: BLE001
+                status["foreign"] += f" / trend endpoint: {e}"
+        flows_all = dict(flows_cache)
+        flows_all.update(inv_flows)
+        try:
+            fpath.write_text(json.dumps(flows_all, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+        foreign = {d: v["foreign"] for d, v in flows_all.items() if v.get("foreign") is not None}
+        individual = {d: v["individual"] for d, v in flows_all.items() if v.get("individual") is not None}
         if INVESTOR_PROBE:
             status["investor_probe"] = " | ".join(INVESTOR_PROBE[-6:])
         try:
@@ -1460,6 +1587,8 @@ def main() -> None:
         "breadth_all": breadth_all,
         "universe_p200": latest["universe"]["ALL"]["p200"],
         "vkospi": rnd(vk_all.get(asof), 2),
+        "flows": ({"foreign": rnd(foreign.get(asof), 0), "individual": rnd(individual.get(asof), 0)}
+                  if foreign.get(asof) is not None else None),
     }
     # keep newly fetched VKOSPI values for past dates too (so a current-only source accumulates)
     known = {h.get("date"): h for h in history if isinstance(h, dict)}
