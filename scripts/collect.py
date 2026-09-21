@@ -342,8 +342,11 @@ def naver_kospi200_codes() -> list[str]:
 # ----------------------------------------------------------------------------
 # Naver Finance: investor trend (foreign net buying, KOSPI, 억원)
 # ----------------------------------------------------------------------------
-def naver_investor_net(start: str) -> dict[str, dict]:
-    """Daily net buying (억원) by investor type for KOSPI: {date: {"foreign": v, "individual": v}}."""
+INVESTOR_PROBE: list[str] = []      # diagnostics for the status panel
+
+
+def _investor_html(start: str) -> dict[str, dict]:
+    """Legacy desktop page (finance.naver.com). Naver started returning HTTP 410 for it in Sept 2026."""
     url = "https://finance.naver.com/sise/investorDealTrendDay.naver"
     bizdate = NOW.strftime("%Y%m%d")
     out: dict[str, dict] = {}
@@ -375,6 +378,94 @@ def naver_investor_net(start: str) -> dict[str, dict]:
         if added == 0 or (out and min(out) <= start):
             break
     return out
+
+
+def _pick_key(keys: list[str], must: tuple[str, ...], prefer: tuple[str, ...], avoid: tuple[str, ...]) -> str | None:
+    cands = [k for k in keys if any(m in k.lower() for m in must) and not any(a in k.lower() for a in avoid)]
+    for pf in prefer:
+        for k in cands:
+            if pf in k.lower():
+                return k
+    return cands[0] if cands else None
+
+
+def _investor_api(url: str, start: str) -> dict[str, dict]:
+    """Naver mobile/JSON candidates. Field names are discovered from the payload; amounts normalised to 억원."""
+    out: dict[str, dict] = {}
+    fkey = ikey = None
+    for page in range(1, 120):
+        r = SESSION.get(url, params={"pageSize": 100, "page": page}, timeout=CFG["timeout"])
+        if r.status_code != 200:
+            INVESTOR_PROBE.append(f"{url.split('/api/')[-1] if '/api/' in url else url}: HTTP {r.status_code}")
+            break
+        try:
+            js = r.json()
+        except Exception:  # noqa: BLE001
+            INVESTOR_PROBE.append(f"{url}: not json")
+            break
+        items = js
+        if isinstance(js, dict):
+            items = next((v for v in js.values() if isinstance(v, list)), [])
+        if not isinstance(items, list) or not items or not isinstance(items[0], dict):
+            INVESTOR_PROBE.append(f"{url}: empty/unknown shape ({str(js)[:80]})")
+            break
+        keys = list(items[0].keys())
+        if fkey is None:
+            fkey = _pick_key(keys, ("foreign",), ("amount", "amt", "value", "price", "purebuy", "netbuy"), ("ratio", "hold"))
+            ikey = _pick_key(keys, ("individual", "person", "indiv", "retail"), ("amount", "amt", "value", "price", "purebuy", "netbuy"), ("ratio",))
+            INVESTOR_PROBE.append(f"{url.split('/api/')[-1] if '/api/' in url else url}: keys={keys[:8]} -> foreign={fkey} individual={ikey}")
+            if fkey is None:
+                break
+        added = 0
+        for it in items:
+            d = re.sub(r"\D", "", str(it.get("localTradedAt") or it.get("bizdate") or it.get("date") or it.get("tradeDate") or ""))[:8]
+            fv = to_num(it.get(fkey))
+            iv = to_num(it.get(ikey)) if ikey else None
+            if re.fullmatch(r"\d{8}", d) and fv is not None and d not in out:
+                out[d] = {"foreign": fv, "individual": iv}
+                added += 1
+        time.sleep(CFG["sleep"])
+        if added == 0 or min(out) <= start:
+            break
+    if out:
+        # normalise units to 억원 by magnitude of the median absolute daily value
+        med = median([abs(v["foreign"]) for v in out.values() if v["foreign"]]) or 0
+        scale = 1.0
+        if med > 5e10:          # 원
+            scale = 1e-8
+        elif med > 5e5:         # 백만원
+            scale = 1e-2
+        if scale != 1.0:
+            for v in out.values():
+                v["foreign"] = v["foreign"] * scale
+                if v["individual"] is not None:
+                    v["individual"] = v["individual"] * scale
+        INVESTOR_PROBE.append(f"unit scale x{scale:g} (median abs {med:,.0f}), rows {len(out)}")
+    return out
+
+
+def naver_investor_net(start: str) -> dict[str, dict]:
+    """Daily net buying (억원) by investor type for KOSPI: {date: {"foreign": v, "individual": v}}."""
+    try:
+        out = _investor_html(start)
+        if len(out) >= 250:
+            INVESTOR_PROBE.append(f"legacy html ok ({len(out)} rows)")
+            return out
+        INVESTOR_PROBE.append(f"legacy html rows={len(out)}")
+    except Exception as e:  # noqa: BLE001
+        INVESTOR_PROBE.append(f"legacy html: {str(e)[-60:]}")
+    for url in ("https://m.stock.naver.com/api/index/KOSPI/investor",
+                "https://m.stock.naver.com/api/index/KOSPI/trend",
+                "https://m.stock.naver.com/api/index/KOSPI/investorTrend",
+                "https://api.stock.naver.com/index/KOSPI/investor",
+                "https://api.stock.naver.com/index/KOSPI/trend"):
+        try:
+            out = _investor_api(url, start)
+            if len(out) >= 250:
+                return out
+        except Exception as e:  # noqa: BLE001
+            INVESTOR_PROBE.append(f"{url}: {str(e)[-60:]}")
+    raise RuntimeError("investor flows unavailable on all routes")
 
 
 def naver_index_turnover(code: str, start: str) -> tuple[dict[str, float], str]:
@@ -1016,6 +1107,8 @@ def main() -> None:
             status["foreign"] = f"ok ({len(foreign)} days, individual {len(individual)})"
         except Exception as e:  # noqa: BLE001
             foreign, individual, status["foreign"] = {}, {}, f"fail: {e}"
+        if INVESTOR_PROBE:
+            status["investor_probe"] = " | ".join(INVESTOR_PROBE[-6:])
         try:
             turnover, turnover_src = naver_index_turnover("KOSPI", start)
             if len(turnover) < 250:
