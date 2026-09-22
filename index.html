@@ -88,7 +88,7 @@ a{color:var(--blue)}
 .periods button:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}
 
 /* charts */
-.chart{position:relative;height:380px;border:1px solid var(--hair);padding:14px 10px 8px;background:#fff}
+.chart{position:relative;height:420px;border:1px solid var(--hair);padding:14px 10px 8px;background:#fff}
 .chart.short{height:280px}
 .chart-note{margin:8px 0 0;font-size:14px;color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
@@ -229,7 +229,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     <div class="sec-head">
       <div>
         <h2>두 지수의 히스토리</h2>
-        <p class="lead">공포·탐욕 지수는 50 미만 빨강·50 이상 녹색, 과열도 지수는 오렌지 점선, KOSPI는 네이비(오른쪽 축)입니다. 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다.</p>
+        <p class="lead">공포·탐욕 지수(굵은 선, 50 미만 빨강·50 이상 녹색)와 과열도 지수(오렌지 점선)는 왼쪽 축, KOSPI는 연한 면으로 오른쪽 축입니다. 범례를 누르면 해당 선을 숨길 수 있고, 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다.</p>
       </div>
       <div class="periods" id="periods" role="group" aria-label="차트 기간"></div>
     </div>
@@ -400,6 +400,29 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
   };
   Chart.register(bandPlugin);
 
+  const midlinePlugin = {
+    id:'midline',
+    afterDatasetsDraw(chart){
+      const {ctx, chartArea, scales} = chart;
+      const y = scales.y; if(!y || !chart.options.midlineOn) return;
+      ctx.save();
+      // 25 / 75 guide lines (faint dotted)
+      [25,75].forEach(v => {
+        const yy = y.getPixelForValue(v);
+        ctx.setLineDash([2,4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(26,26,26,.28)';
+        ctx.beginPath(); ctx.moveTo(chartArea.left, yy); ctx.lineTo(chartArea.right, yy); ctx.stroke();
+      });
+      // 50 midline (solid, dark)
+      const y50 = y.getPixelForValue(50);
+      ctx.setLineDash([]); ctx.lineWidth = 2; ctx.strokeStyle = '#1A1A1A';
+      ctx.beginPath(); ctx.moveTo(chartArea.left, y50); ctx.lineTo(chartArea.right, y50); ctx.stroke();
+      ctx.font = "600 12px 'Inter','Noto Sans KR',sans-serif"; ctx.fillStyle = '#1A1A1A'; ctx.textBaseline = 'bottom';
+      ctx.fillText('50 중립선', chartArea.left + 6, y50 - 3);
+      ctx.restore();
+    }
+  };
+  Chart.register(midlinePlugin);
+
   function xTick(v){ const d = this.getLabelForValue(v); return d ? d.slice(2,4)+'.'+d.slice(4,6) : ''; }
   function xTickLong(v){ const d = this.getLabelForValue(v); return d ? d.slice(0,4)+'.'+d.slice(4,6) : ''; }
 
@@ -558,24 +581,29 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     el('periods').innerHTML = PERIODS.map(([p]) => `<button type="button" data-p="${p}" class="${p===period?'on':''}">${p}</button>`).join('');
     el('periods').addEventListener('click', e => { const b = e.target.closest('button'); if(b) applyPeriod(b.dataset.p); });
 
-    // history chart: fear/greed (red/green by value) + overheat (orange dashed) + KOSPI (navy, right axis)
+    // history chart: KOSPI as a light area behind; fear/greed bold (red/green by value); overheat thin dashed
     const segColor = ctx => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2 < 50) ? RED : GREEN;
+    const tickFont = {size:13, weight:'600'};
     lineChart(el('c-composite'), S.dates, [
-      {label:'공포·탐욕 (50 미만 빨강 · 50 이상 녹색)', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.2, segment:{borderColor:segColor}},
-      {label:'과열도', data:S.overheat || [], borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:1.8, borderDash:[5,3]},
-      {label:'KOSPI', data:S.kospi, borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y2', borderWidth:1.4}
-    ], {bandsOn:true, scales:{
-      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick}},
-      y:{min:0, max:100, ticks:{stepSize:25}, grid:{color:'#E5E4E1'}, title:{display:true, text:'지수 (0~100)'}},
-      y2:{position:'right', grid:{display:false}, title:{display:true, text:'KOSPI'}}
-    }, plugins:{legend:{position:'top', align:'end'}, tooltip:{callbacks:{
-      title:(items)=>fmtDate(items[0].label),
-      labelColor:(it)=>{ if(it.datasetIndex===0){ const c = (it.parsed.y==null||it.parsed.y<50)?RED:GREEN; return {borderColor:c, backgroundColor:c}; }
-                         if(it.datasetIndex===1) return {borderColor:ORANGE, backgroundColor:ORANGE}; return {borderColor:BLUE, backgroundColor:BLUE}; }
-    }}}});
+      {label:'공포·탐욕 지수', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.6, order:1, segment:{borderColor:segColor}},
+      {label:'과열도 지수', data:S.overheat || [], borderColor:'rgba(245,130,32,.85)', backgroundColor:ORANGE, yAxisID:'y', borderWidth:1.4, borderDash:[4,3], order:2},
+      {label:'KOSPI (면)', data:S.kospi, borderColor:'rgba(4,59,114,.35)', backgroundColor:'rgba(4,59,114,.10)', yAxisID:'y2', borderWidth:1, fill:'start', order:3}
+    ], {midlineOn:true, layout:{padding:{top:4, right:4}}, scales:{
+      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick, font:{size:12}}},
+      y:{min:0, max:100, ticks:{stepSize:25, font:tickFont, color:'#1A1A1A', padding:6}, grid:{color:'rgba(0,0,0,.06)'}, border:{display:false},
+         title:{display:true, text:'지수 (0 공포 — 100 탐욕 / 과열)', font:{size:12}}},
+      y2:{position:'right', grace:'6%', ticks:{font:tickFont, color:BLUE, padding:6, maxTicksLimit:6, callback:v=>Number(v).toLocaleString('ko-KR')},
+          grid:{display:false}, border:{display:false}, title:{display:true, text:'KOSPI', color:BLUE, font:{size:12, weight:'600'}}}
+    }, plugins:{legend:{position:'top', align:'end', labels:{boxWidth:14, boxHeight:10, padding:14, font:{size:13}}},
+      tooltip:{callbacks:{
+        title:(items)=>fmtDate(items[0].label),
+        label:(it)=> it.datasetIndex===2 ? ` KOSPI ${Number(it.raw).toLocaleString('ko-KR',{maximumFractionDigits:2})}` : ` ${it.dataset.label} ${fmt(it.raw,1)}`,
+        labelColor:(it)=>{ if(it.datasetIndex===0){ const c = (it.parsed.y==null||it.parsed.y<50)?RED:GREEN; return {borderColor:c, backgroundColor:c}; }
+                           if(it.datasetIndex===1) return {borderColor:ORANGE, backgroundColor:ORANGE}; return {borderColor:BLUE, backgroundColor:'rgba(4,59,114,.25)'}; }
+      }}}});
     const firstIdx = S.composite.findIndex(v => v != null);
     const compDays = S.composite.filter(v => v != null).length;
-    el('composite-note').textContent = `표시 구간의 두 지수: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 배경 띠는 공포·탐욕 구간이며, 과열도는 같은 0~100 축에 그립니다.`;
+    el('composite-note').textContent = `표시 구간의 두 지수: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 굵은 가로선이 50 중립선, 점선은 25·75 경계입니다.`;
 
     // MA chart
     lineChart(el('c-ma'), S.dates, [
