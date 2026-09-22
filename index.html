@@ -240,7 +240,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     <div class="sec-head">
       <div>
         <h2>두 지수의 히스토리</h2>
-        <p class="lead">한국 공포·탐욕 지수(굵은 선, 50 미만 빨강·50 이상 녹색), 과열도 지수(오렌지 점선), 미국 CNN Fear &amp; Greed(청록 실선)는 왼쪽 축, KOSPI는 연한 면으로 오른쪽 축입니다. 범례를 누르면 해당 선을 숨길 수 있고, 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다.</p>
+        <p class="lead">한국 공포·탐욕 지수(오렌지 실선), 한국 과열도 지수(빨강 점선), 미국 CNN Fear &amp; Greed(네이비 실선)는 왼쪽 축, KOSPI는 연한 면으로 오른쪽 축입니다. 범례를 누르면 해당 선을 숨길 수 있고, 기간 버튼은 아래 시장 폭 차트에도 함께 적용됩니다.</p>
       </div>
       <div class="periods" id="periods" role="group" aria-label="차트 기간"></div>
     </div>
@@ -452,7 +452,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
         const txt = Math.round(arr[i]).toString();
         ctx.font = "700 12px 'Inter','Noto Sans KR',sans-serif";
         const tw = ctx.measureText(txt).width + 10;
-        const color = k===0 ? (arr[i] < 50 ? RED : GREEN) : (k===1 ? ORANGE : '#0086B8');
+        const color = k===0 ? ORANGE : (k===1 ? '#C62828' : BLUE);
         ctx.fillStyle = color; ctx.fillRect(px - tw - 6, py - 9, tw, 18);
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(txt, px - tw - 1, py + 1);
       });
@@ -623,12 +623,12 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     el('periods').addEventListener('click', e => { const b = e.target.closest('button'); if(b) applyPeriod(b.dataset.p); });
 
     // history chart: KOSPI as a light area behind; fear/greed bold (red/green by value); overheat thin dashed
-    const segColor = ctx => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2 < 50) ? RED : GREEN;
+    const HEAT_RED = '#C62828';
     const tickFont = {size:13, weight:'600'};
     lineChart(el('c-composite'), S.dates, [
-      {label:'한국 공포·탐욕', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.4, order:1, segment:{borderColor:segColor}},
-      {label:'한국 과열도', data:S.overheat || [], borderColor:'rgba(245,130,32,.95)', backgroundColor:ORANGE, yAxisID:'y', borderWidth:2.2, borderDash:[5,3], order:2},
-      {label:'미국 Fear & Greed (CNN)', data:S.us_fg || [], borderColor:'#0086B8', backgroundColor:'#0086B8', yAxisID:'y', borderWidth:2.4, order:2},
+      {label:'한국 공포·탐욕', data:S.composite, borderColor:ORANGE, backgroundColor:ORANGE, yAxisID:'y', borderWidth:2.4, order:1},
+      {label:'한국 과열도', data:S.overheat || [], borderColor:HEAT_RED, backgroundColor:HEAT_RED, yAxisID:'y', borderWidth:2.2, borderDash:[5,3], order:2},
+      {label:'미국 Fear & Greed (CNN)', data:S.us_fg || [], borderColor:BLUE, backgroundColor:BLUE, yAxisID:'y', borderWidth:2.4, order:2},
       {label:'KOSPI (면)', data:S.kospi, borderColor:'rgba(4,59,114,.35)', backgroundColor:'rgba(4,59,114,.10)', yAxisID:'y2', borderWidth:1, fill:'start', order:3}
     ], {midlineOn:true, signalsOn:true, layout:{padding:{top:6, right:4}}, scales:{
       x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick, font:{size:12}}},
@@ -640,9 +640,9 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       tooltip:{callbacks:{
         title:(items)=>fmtDate(items[0].label),
         label:(it)=> it.datasetIndex===3 ? ` KOSPI ${Number(it.raw).toLocaleString('ko-KR',{maximumFractionDigits:2})}` : ` ${it.dataset.label} ${fmt(it.raw,1)}`,
-        labelColor:(it)=>{ if(it.datasetIndex===0){ const c = (it.parsed.y==null||it.parsed.y<50)?RED:GREEN; return {borderColor:c, backgroundColor:c}; }
-                           if(it.datasetIndex===1) return {borderColor:ORANGE, backgroundColor:ORANGE};
-                           if(it.datasetIndex===2) return {borderColor:'#0086B8', backgroundColor:'#0086B8'}; return {borderColor:BLUE, backgroundColor:'rgba(4,59,114,.25)'}; }
+        labelColor:(it)=>{ if(it.datasetIndex===0) return {borderColor:ORANGE, backgroundColor:ORANGE};
+                           if(it.datasetIndex===1) return {borderColor:HEAT_RED, backgroundColor:HEAT_RED};
+                           if(it.datasetIndex===2) return {borderColor:BLUE, backgroundColor:BLUE}; return {borderColor:BLUE, backgroundColor:'rgba(4,59,114,.25)'}; }
       }}}});
     const firstIdx = S.composite.findIndex(v => v != null);
     const compDays = S.composite.filter(v => v != null).length;
