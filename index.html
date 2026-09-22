@@ -446,21 +446,19 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       ctx.save();
       for(let i=0;i<n;i++){
         const px = x.getPixelForValue(i);
-        if(oh[i] != null && oh[i] >= 75){ ctx.fillStyle = 'rgba(198,40,40,.9)'; ctx.fillRect(px - w/2, chartArea.top, w, 7); }
-        if(fg[i] != null && fg[i] <= 25){ ctx.fillStyle = 'rgba(30,127,60,.9)'; ctx.fillRect(px - w/2, chartArea.bottom - 7, w, 7); }
+        if(oh[i] != null && oh[i] >= 75){ ctx.fillStyle = 'rgba(198,40,40,.85)'; ctx.fillRect(px - w/2, chartArea.top - 10, w, 5); }
+        if(fg[i] != null && fg[i] <= 25){ ctx.fillStyle = 'rgba(30,127,60,.85)'; ctx.fillRect(px - w/2, chartArea.bottom + 4, w, 5); }
       }
-      ctx.font = "600 11px 'Inter','Noto Sans KR',sans-serif"; ctx.textBaseline = 'top';
-      ctx.fillStyle = 'rgba(198,40,40,.9)'; ctx.fillText('▮ 과열도 75 이상', chartArea.left + 6, chartArea.top + 9);
-      ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(30,127,60,.9)'; ctx.fillText('▮ 공포·탐욕 25 이하', chartArea.left + 6, chartArea.bottom - 9);
-      // current-value labels at the right end of the two index lines
+      // current-value labels at the right end of the index lines
       const lastIdx = arr => { for(let i=arr.length-1;i>=0;i--) if(arr[i]!=null) return i; return -1; };
-      [[fg,0],[oh,1]].forEach(([arr,k]) => {
+      const us = chart.data.datasets[2] ? chart.data.datasets[2].data : [];
+      [[fg,0],[oh,1],[us,2]].forEach(([arr,k]) => {
         const i = lastIdx(arr); if(i<0) return;
         const px = x.getPixelForValue(i), py = y.getPixelForValue(arr[i]);
         const txt = Math.round(arr[i]).toString();
         ctx.font = "700 12px 'Inter','Noto Sans KR',sans-serif";
         const tw = ctx.measureText(txt).width + 10;
-        const color = k===0 ? (arr[i] < 50 ? RED : GREEN) : ORANGE;
+        const color = k===0 ? (arr[i] < 50 ? RED : GREEN) : (k===1 ? ORANGE : '#0086B8');
         ctx.fillStyle = color; ctx.fillRect(px - tw - 6, py - 9, tw, 18);
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(txt, px - tw - 1, py + 1);
       });
@@ -634,18 +632,21 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
     const segColor = ctx => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2 < 50) ? RED : GREEN;
     const tickFont = {size:13, weight:'600'};
     lineChart(el('c-composite'), S.dates, [
-      {label:'공포·탐욕 지수', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.6, order:1, segment:{borderColor:segColor}},
-      {label:'과열도 지수', data:S.overheat || [], borderColor:'rgba(245,130,32,.85)', backgroundColor:ORANGE, yAxisID:'y', borderWidth:1.4, borderDash:[4,3], order:2},
-      {label:'미국 Fear & Greed (CNN)', data:S.us_fg || [], borderColor:'rgba(0,134,184,.85)', backgroundColor:'#0086B8', yAxisID:'y', borderWidth:1.3, order:2},
-      {label:'KOSPI (면)', data:S.kospi, borderColor:'rgba(4,59,114,.35)', backgroundColor:'rgba(4,59,114,.10)', yAxisID:'y2', borderWidth:1, fill:'start', order:3}
-    ], {midlineOn:true, signalsOn:true, layout:{padding:{top:4, right:4}}, scales:{
-      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick, font:{size:12}}},
+      {label:'한국 공포·탐욕', data:S.composite, borderColor:GREEN, backgroundColor:GREEN, yAxisID:'y', borderWidth:2.4, order:1, segment:{borderColor:segColor}},
+      {label:'한국 과열도', data:S.overheat || [], borderColor:'rgba(245,130,32,.95)', backgroundColor:ORANGE, yAxisID:'y', borderWidth:2.2, borderDash:[5,3], order:2},
+      {label:'미국 Fear & Greed (CNN)', data:S.us_fg || [], borderColor:'#0086B8', backgroundColor:'#0086B8', yAxisID:'y', borderWidth:2.4, order:2},
+      {label:'KOSPI (면)', data:S.kospi, borderColor:'rgba(4,59,114,.35)', backgroundColor:'rgba(4,59,114,.10)', yAxisID:'y2', borderWidth:1, fill:'start', order:3},
+      {label:'위 빨간 띠: 과열도 75 이상인 날', data:[], borderColor:'rgba(198,40,40,.85)', backgroundColor:'rgba(198,40,40,.85)', borderWidth:0, pointRadius:0},
+      {label:'아래 초록 띠: 공포·탐욕 25 이하인 날', data:[], borderColor:'rgba(30,127,60,.85)', backgroundColor:'rgba(30,127,60,.85)', borderWidth:0, pointRadius:0}
+    ], {midlineOn:true, signalsOn:true, layout:{padding:{top:14, right:4}}, scales:{
+      x:{grid:{display:false}, ticks:{maxTicksLimit:8, callback:xTick, font:{size:12}, padding:12}},
       y:{min:0, max:100, ticks:{stepSize:25, font:tickFont, color:'#1A1A1A', padding:6}, grid:{color:'rgba(0,0,0,.06)'}, border:{display:false},
          title:{display:true, text:'지수 (0 공포 — 100 탐욕 / 과열)', font:{size:12}}},
       y2:{position:'right', grace:'6%', ticks:{font:tickFont, color:BLUE, padding:6, maxTicksLimit:6, callback:v=>Number(v).toLocaleString('ko-KR')},
           grid:{display:false}, border:{display:false}, title:{display:true, text:'KOSPI', color:BLUE, font:{size:12, weight:'600'}}}
-    }, plugins:{legend:{position:'top', align:'end', labels:{boxWidth:14, boxHeight:10, padding:14, font:{size:13}}},
-      tooltip:{callbacks:{
+    }, plugins:{legend:{position:'top', align:'end', labels:{boxWidth:14, boxHeight:10, padding:12, font:{size:12},
+        filter:(item)=>true}},
+      tooltip:{filter:(it)=> it.datasetIndex <= 3, callbacks:{
         title:(items)=>fmtDate(items[0].label),
         label:(it)=> it.datasetIndex===3 ? ` KOSPI ${Number(it.raw).toLocaleString('ko-KR',{maximumFractionDigits:2})}` : ` ${it.dataset.label} ${fmt(it.raw,1)}`,
         labelColor:(it)=>{ if(it.datasetIndex===0){ const c = (it.parsed.y==null||it.parsed.y<50)?RED:GREEN; return {borderColor:c, backgroundColor:c}; }
@@ -654,7 +655,7 @@ footer{margin-top:56px;border-top:1px solid var(--hair);padding:22px 0 40px;font
       }}}});
     const firstIdx = S.composite.findIndex(v => v != null);
     const compDays = S.composite.filter(v => v != null).length;
-    el('composite-note').textContent = `표시 구간의 두 지수: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 굵은 가로선이 50 중립선, 점선은 25·75 경계입니다. 차트 맨 위 빨간 띠는 과열도가 75를 넘은 날, 맨 아래 초록 띠는 공포·탐욕이 25 아래였던 날이며, 선 오른쪽 끝의 숫자는 최신 값입니다.`;
+    el('composite-note').textContent = `표시 구간: ${firstIdx>=0 ? fmtDate(S.dates[firstIdx]) : '-'} ~ ${D.asof_fmt} (${compDays.toLocaleString()}거래일). 굵은 가로선이 50 중립선, 점선은 25·75 경계입니다. 차트 위쪽 빨간 띠는 한국 과열도가 75 이상(과열 위험)이었던 날, 아래쪽 초록 띠는 한국 공포·탐욕이 25 이하(극단적 공포)였던 날을 표시하며, 띠가 길게 이어지면 그 상태가 오래 지속됐다는 뜻입니다. 선 오른쪽 끝의 숫자는 최신 값입니다.`;
 
     // MA chart
     lineChart(el('c-ma'), S.dates, [
