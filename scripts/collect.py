@@ -701,6 +701,75 @@ def kofia_margin(start: str, end: str) -> tuple[dict[str, float], str]:
 
 
 # ----------------------------------------------------------------------------
+# CNN Fear & Greed Index (US) — undocumented JSON used by cnn.com/markets/fear-and-greed
+# ----------------------------------------------------------------------------
+def fetch_cnn_feargreed(start: str, cached: dict[str, float]) -> tuple[dict[str, float], dict, str]:
+    base = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+    hdrs = {"User-Agent": HEADERS["User-Agent"], "Accept": "application/json, text/plain, */*",
+            "Referer": "https://www.cnn.com/markets/fear-and-greed", "Origin": "https://www.cnn.com"}
+    hist: dict[str, float] = dict(cached)
+    current: dict = {}
+    notes: list[str] = []
+
+    def get(url: str):
+        r = SESSION.get(url, headers=hdrs, timeout=CFG["timeout"])
+        if r.status_code != 200:
+            notes.append(f"HTTP {r.status_code}")
+            return None
+        try:
+            return r.json()
+        except Exception:  # noqa: BLE001
+            notes.append("not json")
+            return None
+
+    def absorb(js) -> int:
+        n = 0
+        fh = (js or {}).get("fear_and_greed_historical") if isinstance(js, dict) else None
+        pts = fh.get("data", []) if isinstance(fh, dict) else []
+        for pt in pts:
+            if not isinstance(pt, dict):
+                continue
+            x, y = pt.get("x"), pt.get("y")
+            if x is None or y is None:
+                continue
+            try:
+                d = dt.datetime.fromtimestamp(float(x) / 1000.0, tz=dt.timezone.utc).strftime("%Y%m%d")
+                yv = float(y)
+            except Exception:  # noqa: BLE001
+                continue
+            if 0 <= yv <= 100 and d not in hist:
+                hist[d] = round(yv, 2)
+                n += 1
+        return n
+
+    js = get(base)
+    if js:
+        added = absorb(js)
+        notes.append(f"base +{added}")
+        fg = js.get("fear_and_greed") if isinstance(js, dict) else None
+        if isinstance(fg, dict):
+            current = {k: fg.get(k) for k in ("score", "rating", "timestamp", "previous_close",
+                                              "previous_1_week", "previous_1_month", "previous_1_year")}
+    # deeper history: the endpoint accepts a start date in the path
+    for years in (1, 2, 3, 4, 5, 6):
+        want = (NOW - dt.timedelta(days=365 * years + 30)).strftime("%Y%m%d")
+        if hist and min(hist) <= want:
+            continue
+        if want < start:
+            break
+        d0 = (NOW - dt.timedelta(days=365 * years + 30)).strftime("%Y-%m-%d")
+        js = get(f"{base}/{d0}")
+        added = absorb(js) if js else 0
+        notes.append(f"{d0[:4]} +{added}")
+        time.sleep(CFG["sleep"])
+        if not js or added == 0:
+            break
+    if not hist:
+        raise RuntimeError("no data: " + ", ".join(notes))
+    return hist, current, ", ".join(notes)
+
+
+# ----------------------------------------------------------------------------
 # VKOSPI (best effort, several Naver routes; values validated 3 < v < 200)
 # ----------------------------------------------------------------------------
 def fetch_vkospi(start: str, end: str) -> tuple[dict[str, float], str]:
@@ -862,7 +931,7 @@ def label_for(score: float | None) -> str:
         return "극단적 공포"
     if score < 45:
         return "공포"
-    if score <= 55:
+    if score < 55:
         return "중립"
     if score <= 75:
         return "탐욕"
@@ -876,7 +945,7 @@ def heat_label(score: float | None) -> str:
         return "냉각"
     if score < 45:
         return "낮음"
-    if score <= 55:
+    if score < 55:
         return "보통"
     if score <= 75:
         return "과열 주의"
@@ -1184,6 +1253,12 @@ def main() -> None:
             margin[d] = p
         margin = {d: v * 1e6 for d, v in margin.items()}      # demo values -> KRW scale (백만원 기준)
         margin_desc = "demo"
+        us_hist, lvl = {}, 50.0
+        for d in dates:
+            lvl = max(2.0, min(98.0, lvl + rng.gauss(0, 3.0) + (50 - lvl) * 0.04))
+            us_hist[d] = round(lvl, 2)
+        us_cur = {"score": us_hist[dates[-1]], "rating": "neutral"}
+        status["us_feargreed"] = "demo"
         vk, lvl = {}, 22.0
         for d in dates:
             lvl = max(8.0, lvl + rng.gauss(0, 1.2) + (20 - lvl) * 0.03)
@@ -1255,6 +1330,24 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             margin, margin_desc, status["margin"] = {}, "", f"skip: {e}"
         vk, vk_src = fetch_vkospi(start, end)
+        us_cache: dict[str, float] = {}
+        upath = DATA_DIR / "us_feargreed.json"
+        if upath.exists():
+            try:
+                us_cache = {k: float(v) for k, v in json.loads(upath.read_text(encoding="utf-8")).items()
+                            if re.fullmatch(r"\d{8}", k)}
+            except Exception:  # noqa: BLE001
+                us_cache = {}
+        try:
+            us_hist, us_cur, us_note = fetch_cnn_feargreed(start, us_cache)
+            status["us_feargreed"] = f"ok ({len(us_hist)} days; {us_note})"
+            try:
+                upath.write_text(json.dumps(us_hist, separators=(",", ":")), encoding="utf-8")
+            except Exception:  # noqa: BLE001
+                pass
+        except Exception as e:  # noqa: BLE001
+            us_hist, us_cur = us_cache, {}
+            status["us_feargreed"] = f"fail: {e} (cached {len(us_cache)} days)"
     vk_all = dict(stored_vk)
     vk_all.update(vk)
     status["vkospi"] = f"{vk_src} ({len(vk)} fetched, {len(vk_all)} total incl. stored)"
@@ -1452,6 +1545,17 @@ def main() -> None:
         if len(sc) >= 4:
             overheat[i] = sum(sc) / len(sc)
 
+    # ---------------- 7b2. CNN Fear & Greed aligned to Korean trading days ----------------
+    us_al = [us_hist.get(d) for d in dates]
+    last_u, gap = None, 0
+    for i in range(n_days):
+        if us_al[i] is None and last_u is not None and gap < 4:
+            us_al[i] = last_u
+            gap += 1
+        elif us_al[i] is not None:
+            last_u, gap = us_al[i], 0
+    us_last_date = max(us_hist) if us_hist else None
+
     # ---------------- 7c. backtest on known tops and bottoms ----------------
     episodes = [
         ("고점", "2021.1 동학개미 정점", "20210101", "20210228"),
@@ -1555,6 +1659,17 @@ def main() -> None:
             "year3": at(overheat, 750),
             "n_components": len([h for h in heat if h["score"][last_i] is not None]),
         },
+        "us": {
+            "score": rnd(to_num(us_cur.get("score")) if us_cur.get("score") is not None else us_al[last_i], 1),
+            "label": label_for(to_num(us_cur.get("score")) if us_cur.get("score") is not None else us_al[last_i]),
+            "rating": us_cur.get("rating"),
+            "prev": rnd(to_num(us_cur.get("previous_close")) if us_cur.get("previous_close") is not None else at(us_al, 1), 1),
+            "week": rnd(to_num(us_cur.get("previous_1_week")) if us_cur.get("previous_1_week") is not None else at(us_al, 5), 1),
+            "month": rnd(to_num(us_cur.get("previous_1_month")) if us_cur.get("previous_1_month") is not None else at(us_al, 21), 1),
+            "year": rnd(to_num(us_cur.get("previous_1_year")) if us_cur.get("previous_1_year") is not None else at(us_al, 250), 1),
+            "year3": at(us_al, 750),
+            "asof": us_last_date, "days": len(us_hist),
+        },
         "components": comp_out,
         "heat_components": heat_out,
         "backtest": backtest,
@@ -1575,6 +1690,7 @@ def main() -> None:
             "nh": agg["ALL"]["nh"][sl], "nl": agg["ALL"]["nl"][sl],
             "vkospi": cut(vk_al, 2),
             "overheat": cut(overheat, 1),
+            "us_fg": cut(us_al, 1),
             "composite_days": sum(1 for x in composite if x is not None),
         },
     }
@@ -1605,7 +1721,7 @@ def main() -> None:
                                           encoding="utf-8")
     (DATA_DIR / "status.json").write_text(json.dumps({
         "asof": asof, "generated_at": latest["generated_at"], "composite": latest["composite"],
-        "overheat": latest["overheat"],
+        "overheat": latest["overheat"], "us": latest["us"],
         "components": {c["key"]: c["score"] for c in comp_out},
         "heat_components": {h["key"]: h["score"] for h in heat_out},
         "backtest": backtest, "breadth_all": breadth_all,
