@@ -1,57 +1,57 @@
 {
  "asof": "20261020",
- "generated_at": "2026-10-20 10:06 KST",
+ "generated_at": "2026-10-20 23:22 KST",
  "composite": {
-  "score": 18.9,
+  "score": 19.0,
   "label": "극단적 공포",
-  "prev": 21.1,
+  "prev": 20.75,
   "week": 27.55,
   "month": 34.35,
-  "year": 76.85,
-  "year3": 45.45,
+  "year": 76.75,
+  "year3": 45.4,
   "n_components": 8
  },
  "overheat": {
-  "score": 28.9,
+  "score": 30.4,
   "label": "낮음",
-  "prev": 29.82,
+  "prev": 29.71,
   "week": 37.91,
-  "month": 42.48,
-  "year": 76.9,
-  "year3": 49.17,
+  "month": 42.46,
+  "year": 76.88,
+  "year3": 49.12,
   "n_components": 8
  },
  "us": {
-  "score": 23.1,
-  "label": "극단적 공포",
-  "rating": "extreme fear",
-  "prev": 17.9,
-  "week": 46.3,
+  "score": 25.7,
+  "label": "공포",
+  "rating": "fear",
+  "prev": 23.1,
+  "week": 44.1,
   "month": 30.4,
-  "year": 22.3,
+  "year": 29.9,
   "year3": 51.4,
-  "asof": "20261019",
-  "days": 1545
+  "asof": "20261020",
+  "days": 1546
  },
  "components": {
   "momentum": 0.6,
-  "strength": 8.6,
-  "breadth": 10.6,
+  "strength": 8.0,
+  "breadth": 10.2,
   "volatility": 47.4,
   "safehaven": 5.4,
-  "foreign": 24.6,
-  "leverage": 26.2,
-  "margin": 27.8
+  "foreign": 24.2,
+  "leverage": 34.2,
+  "margin": 21.8
  },
  "heat_components": {
   "h_trend": 0.1,
   "h_speed": 2.7,
   "h_upvol": 0.0,
-  "h_retail": 48.2,
-  "h_margin": 76.3,
-  "h_leverage": 26.2,
-  "h_gap": 1.4,
-  "h_turnover": 76.3
+  "h_retail": 50.2,
+  "h_margin": 75.5,
+  "h_leverage": 34.2,
+  "h_gap": 1.9,
+  "h_turnover": 78.2
  },
  "backtest": [
   {
@@ -59,8 +59,8 @@
    "name": "2021.1 동학개미 정점",
    "date": "20210125",
    "kospi": 3208.99,
-   "feargreed": 73.3,
-   "overheat": 91.7,
+   "feargreed": 73.0,
+   "overheat": 91.8,
    "verdict": "포착"
   },
   {
@@ -68,8 +68,8 @@
    "name": "2024.7 밸류업 랠리 고점",
    "date": "20240711",
    "kospi": 2891.35,
-   "feargreed": 81.8,
-   "overheat": 66.1,
+   "feargreed": 82.2,
+   "overheat": 66.0,
    "verdict": "부분"
   },
   {
@@ -138,16 +138,16 @@
  ],
  "breadth_all": {
   "KOSPI": {
-   "adv": 303,
-   "dec": 1624,
-   "unch": 208,
-   "total": 2135
+   "adv": 365,
+   "dec": 1648,
+   "unch": 127,
+   "total": 2140
   },
   "KOSDAQ": {
-   "adv": 268,
-   "dec": 1341,
-   "unch": 148,
-   "total": 1757
+   "adv": 355,
+   "dec": 1278,
+   "unch": 129,
+   "total": 1762
   }
  },
  "universe": {
@@ -157,20 +157,20 @@
  },
  "universe_all": {
   "n": 349,
-  "adv": 46,
-  "dec": 299,
-  "unch": 4,
-  "p20": 25.8,
-  "p50": 27.2,
-  "p200": 26.2,
+  "adv": 32,
+  "dec": 315,
+  "unch": 2,
+  "p20": 21.2,
+  "p50": 23.5,
+  "p200": 24.5,
   "nh": 1,
-  "nl": 12,
-  "adr10": -17.34
+  "nl": 18,
+  "adr10": -17.91
  },
  "status": {
   "index": "ok",
-  "market_sum": "html 0 / mobile api 3892",
-  "listed": "3892 rows, 2550 common stocks, mktcap parsed 2550",
+  "market_sum": "html 0 / mobile api 3902",
+  "listed": "3902 rows, 2557 common stocks, mktcap parsed 2557",
   "universe_kospi": "top mktcap proxy",
   "universe_kosdaq": "top mktcap proxy",
   "universe_history": "naver: 349 ok / 1 failed",
@@ -180,24 +180,24 @@
   "foreign": "trend endpoint: snapshot only (1 day per run), 1746 days total",
   "investor_probe": "legacy html: er {'bizdate': '20261020', 'sosok': '', 'page': 1}: HTTP 410 | index/KOSPI/investor: HTTP 404 | index/KOSPI/investorTrend: HTTP 404 | index/KOSPI/trend/daily: HTTP 404",
   "turnover": "유니버스 350종목 거래대금 합계 (계산값) (1728 days)",
-  "margin": "ok (1733 days, column TMPV2 unverified (best TMPV3 err 22.61%))",
-  "us_feargreed": "ok (1545 days; base +0)",
+  "margin": "ok (1734 days, column TMPV2 unverified (best TMPV3 err 22.61%))",
+  "us_feargreed": "ok (1546 days; base +1)",
   "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[10:06:36] index rows: KOSPI 1728  KOSDAQ 1728  asof 20261020",
-  "[10:06:38] market_sum sosok=0: no stock table (tables=0, html=130028b, title=Npay 利沅)",
-  "[10:06:39] market_sum sosok=1: no stock table (tables=0, html=130028b, title=Npay 利沅)",
-  "[10:06:39] market list from HTML too short, trying Naver mobile API",
-  "[10:06:56] listed rows: 3892",
-  "[10:07:02] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
-  "[10:07:02] universe: 350  (top mktcap proxy)",
-  "[10:09:06] universe history: naver: 349 ok / 1 failed",
-  "[10:09:18] turnover api failed (rows=0); using universe trading value",
-  "[10:09:22] vkospi siseJson rows: 0",
-  "[10:09:22] vkospi mobile api rows: 0",
-  "[10:09:29] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
-  "[10:09:30] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1746 days total margin=ok (1733 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[23:22:42] index rows: KOSPI 1728  KOSDAQ 1728  asof 20261020",
+  "[23:22:44] market_sum sosok=0: no stock table (tables=0, html=130028b, title=Npay 利沅)",
+  "[23:22:45] market_sum sosok=1: no stock table (tables=0, html=130028b, title=Npay 利沅)",
+  "[23:22:45] market list from HTML too short, trying Naver mobile API",
+  "[23:23:05] listed rows: 3902",
+  "[23:23:12] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
+  "[23:23:12] universe: 350  (top mktcap proxy)",
+  "[23:25:28] universe history: naver: 349 ok / 1 failed",
+  "[23:25:41] turnover api failed (rows=0); using universe trading value",
+  "[23:25:45] vkospi siseJson rows: 0",
+  "[23:25:45] vkospi mobile api rows: 0",
+  "[23:25:52] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
+  "[23:25:53] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1746 days total margin=ok (1734 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
