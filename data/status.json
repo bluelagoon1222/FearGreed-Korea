@@ -1,57 +1,57 @@
 {
  "asof": "20261022",
- "generated_at": "2026-10-22 09:43 KST",
+ "generated_at": "2026-10-22 23:34 KST",
  "composite": {
-  "score": 18.4,
+  "score": 17.6,
   "label": "극단적 공포",
-  "prev": 17.7,
+  "prev": 17.55,
   "week": 19.85,
-  "month": 36.8,
-  "year": 73.2,
-  "year3": 55.1,
+  "month": 37.1,
+  "year": 73.35,
+  "year3": 55.25,
   "n_components": 8
  },
  "overheat": {
-  "score": 27.6,
+  "score": 29.2,
   "label": "낮음",
-  "prev": 27.55,
+  "prev": 27.52,
   "week": 34.12,
-  "month": 38.24,
+  "month": 38.21,
   "year": 79.83,
-  "year3": 48.13,
+  "year3": 48.18,
   "n_components": 8
  },
  "us": {
-  "score": 31.4,
-  "label": "공포",
-  "rating": "fear",
-  "prev": 27.2,
-  "week": 26.7,
-  "month": 34.2,
-  "year": 28.5,
+  "score": 23.1,
+  "label": "극단적 공포",
+  "rating": "extreme fear",
+  "prev": 31.4,
+  "week": 30.3,
+  "month": 35.0,
+  "year": 26.4,
   "year3": 52.03,
-  "asof": "20261021",
-  "days": 1547
+  "asof": "20261022",
+  "days": 1548
  },
  "components": {
-  "momentum": 1.4,
-  "strength": 15.8,
-  "breadth": 18.2,
-  "volatility": 47.4,
-  "safehaven": 5.4,
-  "foreign": 28.6,
-  "leverage": 9.8,
-  "margin": 20.6
+  "momentum": 0.2,
+  "strength": 11.0,
+  "breadth": 9.0,
+  "volatility": 46.2,
+  "safehaven": 4.2,
+  "foreign": 28.2,
+  "leverage": 21.8,
+  "margin": 19.8
  },
  "heat_components": {
-  "h_trend": 0.6,
-  "h_speed": 1.5,
+  "h_trend": 0.1,
+  "h_speed": 0.9,
   "h_upvol": 0.0,
-  "h_retail": 57.0,
-  "h_margin": 75.1,
-  "h_leverage": 9.8,
-  "h_gap": 1.8,
-  "h_turnover": 75.3
+  "h_retail": 58.2,
+  "h_margin": 74.9,
+  "h_leverage": 21.8,
+  "h_gap": 1.5,
+  "h_turnover": 76.1
  },
  "backtest": [
   {
@@ -59,8 +59,8 @@
    "name": "2021.1 동학개미 정점",
    "date": "20210125",
    "kospi": 3208.99,
-   "feargreed": 73.2,
-   "overheat": 91.5,
+   "feargreed": 73.1,
+   "overheat": 91.6,
    "verdict": "포착"
   },
   {
@@ -68,8 +68,8 @@
    "name": "2024.7 밸류업 랠리 고점",
    "date": "20240711",
    "kospi": 2891.35,
-   "feargreed": 82.0,
-   "overheat": 66.0,
+   "feargreed": 82.1,
+   "overheat": 66.1,
    "verdict": "부분"
   },
   {
@@ -77,7 +77,7 @@
    "name": "2026.2 KOSPI 5000",
    "date": "20260226",
    "kospi": 6307.27,
-   "feargreed": 70.8,
+   "feargreed": 71.0,
    "overheat": 97.1,
    "verdict": "포착"
   },
@@ -96,7 +96,7 @@
    "date": "20220930",
    "kospi": 2155.49,
    "feargreed": 13.0,
-   "overheat": 22.6,
+   "overheat": 22.5,
    "verdict": "포착"
   },
   {
@@ -122,7 +122,7 @@
    "name": "2026.3 이란 전쟁",
    "date": "20260331",
    "kospi": 5052.46,
-   "feargreed": 15.9,
+   "feargreed": 15.7,
    "overheat": 77.7,
    "verdict": "포착"
   },
@@ -138,16 +138,16 @@
  ],
  "breadth_all": {
   "KOSPI": {
-   "adv": 813,
-   "dec": 1015,
-   "unch": 312,
-   "total": 2140
+   "adv": 529,
+   "dec": 1533,
+   "unch": 79,
+   "total": 2141
   },
   "KOSDAQ": {
-   "adv": 530,
-   "dec": 1054,
-   "unch": 175,
-   "total": 1759
+   "adv": 355,
+   "dec": 1259,
+   "unch": 148,
+   "total": 1762
   }
  },
  "universe": {
@@ -157,20 +157,20 @@
  },
  "universe_all": {
   "n": 349,
-  "adv": 134,
-  "dec": 198,
-  "unch": 17,
-  "p20": 23.5,
-  "p50": 26.4,
-  "p200": 27.6,
-  "nh": 1,
-  "nl": 7,
-  "adr10": -13.09
+  "adv": 38,
+  "dec": 309,
+  "unch": 2,
+  "p20": 15.8,
+  "p50": 20.9,
+  "p200": 22.7,
+  "nh": 0,
+  "nl": 23,
+  "adr10": -18.8
  },
  "status": {
   "index": "ok",
-  "market_sum": "html 0 / mobile api 3899",
-  "listed": "3899 rows, 2553 common stocks, mktcap parsed 2553",
+  "market_sum": "html 0 / mobile api 3903",
+  "listed": "3903 rows, 2557 common stocks, mktcap parsed 2557",
   "universe_kospi": "top mktcap proxy",
   "universe_kosdaq": "top mktcap proxy",
   "universe_history": "naver: 349 ok / 1 failed",
@@ -180,24 +180,24 @@
   "foreign": "trend endpoint: snapshot only (1 day per run), 1748 days total",
   "investor_probe": "legacy html: er {'bizdate': '20261022', 'sosok': '', 'page': 1}: HTTP 410 | index/KOSPI/investor: HTTP 404 | index/KOSPI/investorTrend: HTTP 404 | index/KOSPI/trend/daily: HTTP 404",
   "turnover": "유니버스 350종목 거래대금 합계 (계산값) (1729 days)",
-  "margin": "ok (1734 days, column TMPV2 unverified (best TMPV3 err 22.61%))",
-  "us_feargreed": "ok (1547 days; base +0)",
+  "margin": "ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%))",
+  "us_feargreed": "ok (1548 days; base +1)",
   "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[09:43:34] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261022",
-  "[09:43:37] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[09:43:38] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[09:43:38] market list from HTML too short, trying Naver mobile API",
-  "[09:43:58] listed rows: 3899",
-  "[09:44:05] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
-  "[09:44:05] universe: 350  (top mktcap proxy)",
-  "[09:46:22] universe history: naver: 349 ok / 1 failed",
-  "[09:46:34] turnover api failed (rows=0); using universe trading value",
-  "[09:46:38] vkospi siseJson rows: 0",
-  "[09:46:39] vkospi mobile api rows: 0",
-  "[09:46:45] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
-  "[09:46:47] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1748 days total margin=ok (1734 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[23:34:06] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261022",
+  "[23:34:09] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[23:34:10] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[23:34:10] market list from HTML too short, trying Naver mobile API",
+  "[23:34:28] listed rows: 3903",
+  "[23:34:34] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
+  "[23:34:34] universe: 350  (top mktcap proxy)",
+  "[23:36:46] universe history: naver: 349 ok / 1 failed",
+  "[23:36:58] turnover api failed (rows=0); using universe trading value",
+  "[23:37:02] vkospi siseJson rows: 0",
+  "[23:37:02] vkospi mobile api rows: 0",
+  "[23:37:09] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
+  "[23:37:10] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1748 days total margin=ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
