@@ -1,6 +1,6 @@
 {
  "asof": "20261023",
- "generated_at": "2026-10-24 09:46 KST",
+ "generated_at": "2026-10-24 10:43 KST",
  "composite": {
   "score": 16.1,
   "label": "극단적 공포",
@@ -186,18 +186,18 @@
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[09:46:57] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261023",
-  "[09:47:00] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[09:47:01] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[09:47:01] market list from HTML too short, trying Naver mobile API",
-  "[09:47:20] listed rows: 3904",
-  "[09:47:26] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
-  "[09:47:26] universe: 350  (top mktcap proxy)",
-  "[09:49:36] universe history: naver: 349 ok / 1 failed",
-  "[09:49:48] turnover api failed (rows=0); using universe trading value",
-  "[09:49:52] vkospi siseJson rows: 0",
-  "[09:49:52] vkospi mobile api rows: 0",
-  "[09:49:58] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
-  "[09:50:00] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1749 days total margin=ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[10:43:44] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261023",
+  "[10:43:46] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[10:43:47] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[10:43:47] market list from HTML too short, trying Naver mobile API",
+  "[10:44:05] listed rows: 3904",
+  "[10:44:11] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
+  "[10:44:11] universe: 350  (top mktcap proxy)",
+  "[10:46:14] universe history: naver: 349 ok / 1 failed",
+  "[10:46:26] turnover api failed (rows=0); using universe trading value",
+  "[10:46:30] vkospi siseJson rows: 0",
+  "[10:46:30] vkospi mobile api rows: 0",
+  "[10:46:37] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
+  "[10:46:38] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1749 days total margin=ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
