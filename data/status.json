@@ -1,6 +1,6 @@
 {
  "asof": "20261104",
- "generated_at": "2026-11-05 02:21 KST",
+ "generated_at": "2026-11-05 07:00 KST",
  "composite": {
   "score": 21.3,
   "label": "극단적 공포",
@@ -22,7 +22,7 @@
   "n_components": 8
  },
  "us": {
-  "score": 28.2,
+  "score": 27.3,
   "label": "공포",
   "rating": "fear",
   "prev": 19.1,
@@ -181,23 +181,23 @@
   "investor_probe": "legacy html: er {'bizdate': '20261105', 'sosok': '', 'page': 1}: HTTP 410 | index/KOSPI/investor: HTTP 404 | index/KOSPI/investorTrend: HTTP 404 | index/KOSPI/trend/daily: HTTP 404",
   "turnover": "유니버스 350종목 거래대금 합계 (계산값) (1729 days)",
   "margin": "ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%))",
-  "us_feargreed": "ok (1557 days; base +1)",
+  "us_feargreed": "ok (1557 days; base +0)",
   "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[02:21:50] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261104",
-  "[02:21:52] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[02:21:53] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
-  "[02:21:53] market list from HTML too short, trying Naver mobile API",
-  "[02:22:12] listed rows: 3888",
-  "[02:22:18] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
-  "[02:22:18] universe: 350  (top mktcap proxy)",
-  "[02:24:25] universe history: naver: 349 ok / 1 failed",
-  "[02:24:37] turnover api failed (rows=0); using universe trading value",
-  "[02:24:41] vkospi siseJson rows: 0",
-  "[02:24:41] vkospi mobile api rows: 0",
-  "[02:24:48] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
-  "[02:24:49] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1757 days total margin=ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[07:00:54] index rows: KOSPI 1729  KOSDAQ 1729  asof 20261104",
+  "[07:00:56] market_sum sosok=0: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[07:00:56] market_sum sosok=1: no stock table (tables=0, html=129175b, title=Npay 利沅)",
+  "[07:00:56] market list from HTML too short, trying Naver mobile API",
+  "[07:01:12] listed rows: 3888",
+  "[07:01:19] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
+  "[07:01:19] universe: 350  (top mktcap proxy)",
+  "[07:03:14] universe history: naver: 349 ok / 1 failed",
+  "[07:03:25] turnover api failed (rows=0); using universe trading value",
+  "[07:03:28] vkospi siseJson rows: 0",
+  "[07:03:29] vkospi mobile api rows: 0",
+  "[07:03:35] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
+  "[07:03:36] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1757 days total margin=ok (1735 days, column TMPV2 unverified (best TMPV3 err 22.61%)) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
