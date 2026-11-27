@@ -1,6 +1,6 @@
 {
  "asof": "20261127",
- "generated_at": "2026-11-28 04:04 KST",
+ "generated_at": "2026-11-28 07:00 KST",
  "composite": {
   "score": 28.2,
   "label": "공포",
@@ -22,7 +22,7 @@
   "n_components": 7
  },
  "us": {
-  "score": 24.8,
+  "score": 24.9,
   "label": "극단적 공포",
   "rating": "extreme fear",
   "prev": 15.6,
@@ -177,24 +177,24 @@
   "foreign": "trend endpoint: snapshot only (1 day per run), 1774 days total",
   "investor_probe": "legacy html: er {'bizdate': '20261128', 'sosok': '', 'page': 1}: HTTP 410 | index/KOSPI/investor: HTTP 404 | index/KOSPI/investorTrend: HTTP 404 | index/KOSPI/trend/daily: HTTP 404",
   "turnover": "유니버스 350종목 거래대금 합계 (계산값) (1730 days)",
-  "margin": "skip: HTTPSConnectionPool(host='freesis.kofia.or.kr', port=443): Max retries exceeded with url: /meta/getMetaDataList.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='freesis.kofia.or.kr', port=443) at 0x73afdf800a10>, 'Connection to freesis.kofia.or.kr timed out. (connect timeout=20)'))",
-  "us_feargreed": "ok (1574 days; base +1)",
+  "margin": "skip: HTTPSConnectionPool(host='freesis.kofia.or.kr', port=443): Max retries exceeded with url: /meta/getMetaDataList.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='freesis.kofia.or.kr', port=443) at 0x72b0b6604f90>, 'Connection to freesis.kofia.or.kr timed out. (connect timeout=20)'))",
+  "us_feargreed": "ok (1574 days; base +0)",
   "vkospi": "unavailable (0 fetched, 0 total incl. stored)",
   "volatility_mode": "realized (vkospi days aligned: 0)"
  },
  "log": [
-  "[04:04:09] index rows: KOSPI 1730  KOSDAQ 1730  asof 20261127",
-  "[04:04:11] market_sum sosok=0: no stock table (tables=0, html=99230b, title=援 : ㅼ媛  - Npay 利沅)",
-  "[04:04:12] market_sum sosok=1: no stock table (tables=0, html=99230b, title=援 : ㅼ媛  - Npay 利沅)",
-  "[04:04:12] market list from HTML too short, trying Naver mobile API",
-  "[04:04:30] listed rows: 3889",
-  "[04:04:36] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
-  "[04:04:36] universe: 350  (top mktcap proxy)",
-  "[04:06:41] universe history: naver: 350 ok / 0 failed",
-  "[04:06:52] turnover api failed (rows=0); using universe trading value",
-  "[04:07:13] vkospi siseJson rows: 0",
-  "[04:07:13] vkospi mobile api rows: 0",
-  "[04:07:20] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
-  "[04:07:21] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1774 days total margin=skip: HTTPSConnectionPool(host='freesis.kofia.or.kr', port=443): Max retries exceeded with url: /meta/getMetaDataList.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='freesis.kofia.or.kr', port=443) at 0x73afdf800a10>, 'Connection to freesis.kofia.or.kr timed out. (connect timeout=20)')) vkospi=unavailable (0 fetched, 0 total incl. stored)"
+  "[07:00:47] index rows: KOSPI 1730  KOSDAQ 1730  asof 20261127",
+  "[07:00:49] market_sum sosok=0: no stock table (tables=0, html=99230b, title=援 : ㅼ媛  - Npay 利沅)",
+  "[07:00:50] market_sum sosok=1: no stock table (tables=0, html=99230b, title=援 : ㅼ媛  - Npay 利沅)",
+  "[07:00:50] market list from HTML too short, trying Naver mobile API",
+  "[07:01:07] listed rows: 3889",
+  "[07:01:14] kospi200 page 1 failed: fetch failed https://finance.naver.com/sise/entryJongmok.naver {'page': 1}: HTTP 410",
+  "[07:01:14] universe: 350  (top mktcap proxy)",
+  "[07:03:15] universe history: naver: 350 ok / 0 failed",
+  "[07:03:26] turnover api failed (rows=0); using universe trading value",
+  "[07:03:47] vkospi siseJson rows: 0",
+  "[07:03:47] vkospi mobile api rows: 0",
+  "[07:03:54] vkospi index page failed: fetch failed https://finance.naver.com/sise/sise_index_day.naver {'code': 'VKOSPI', 'page': 1}: HTTP 410",
+  "[07:03:55] inputs: bond=ok etf=ok foreign=trend endpoint: snapshot only (1 day per run), 1774 days total margin=skip: HTTPSConnectionPool(host='freesis.kofia.or.kr', port=443): Max retries exceeded with url: /meta/getMetaDataList.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='freesis.kofia.or.kr', port=443) at 0x72b0b6604f90>, 'Connection to freesis.kofia.or.kr timed out. (connect timeout=20)')) vkospi=unavailable (0 fetched, 0 total incl. stored)"
  ]
 }
